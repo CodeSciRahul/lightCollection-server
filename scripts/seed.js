@@ -1,14 +1,14 @@
 import mongoose from "mongoose";
-import { connectDB } from "../config/db.js";
-import Category from "../models/Category.model.js";
-import Brand from "../models/Brand.model.js";
-import Product from "../models/Product.model.js";
-import Banner from "../models/Banner.model.js";
-import Announcement from "../models/Announcement.model.js";
-import Coupon from "../models/Coupon.model.js";
-import CouponRedemption from "../models/CouponRedemption.model.js";
-import User from "../models/User.model.js";
-import Seller from "../models/Seller.model.js";
+import { connectDB } from "../src/config/database.js";
+import Category from "../src/models/Category.js";
+import Brand from "../src/models/Brand.js";
+import Product from "../src/models/Product.js";
+import Banner from "../src/models/Banner.js";
+import Announcement from "../src/models/Announcement.js";
+import Coupon from "../src/models/Coupon.js";
+import CouponRedemption from "../src/models/CouponRedemption.js";
+import User from "../src/models/User.js";
+import Seller from "../src/models/Seller.js";
 
 const departments = [
   { name: "Men", slug: "men", department: "men", displayOrder: 1, showInNav: true },

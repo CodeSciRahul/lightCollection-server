@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
-import { appConfig } from "../config/appConfig.js";
-import { connectDB } from "../config/db.js";
-import { initFirebaseAdmin } from "../vendor/firebase.vendor.js";
-import User from "../models/User.model.js";
+import { appConfig, connectDB } from "../src/config/index.js";
+import { initFirebaseAdmin } from "../src/vendor/firebase.vendor.js";
+import User from "../src/models/User.js";
 
 /**
  * Seeds the first platform admin in Firebase Auth + MongoDB.
