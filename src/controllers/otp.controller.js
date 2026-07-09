@@ -34,3 +34,18 @@ export const registerSellerAccount = serviceHandler((req) =>
     signInProvider: req.body.signInProvider,
   })
 );
+
+export const sendDashboardOtp = serviceHandler((req) =>
+  AuthService.sendDashboardOtp({
+    email: req.body.email,
+    loginType: req.body.loginType,
+  })
+);
+
+export const verifyDashboardOtp = createAuthHandler((req) =>
+  AuthService.verifyDashboardOtp({
+    email: req.body.email,
+    otp: req.body.otp,
+    loginType: req.body.loginType,
+  })
+);

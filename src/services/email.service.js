@@ -3,6 +3,7 @@ import { getResendClient } from "../vendor/resend.vendor.js";
 
 const SELLER_OTP_SUBJECT = "Your NilesCart seller verification code";
 const CUSTOMER_OTP_SUBJECT = "Your NilesCart login code";
+const DASHBOARD_OTP_SUBJECT = "Your NilesCart dashboard login code";
 
 const buildSellerOtpHtml = (otp) => `
   <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -16,6 +17,15 @@ const buildSellerOtpHtml = (otp) => `
 const buildCustomerOtpHtml = (otp) => `
   <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
     <h2>Sign in to NilesCart</h2>
+    <p>Use this verification code to continue:</p>
+    <p style="font-size: 32px; font-weight: bold; letter-spacing: 6px; margin: 24px 0;">${otp}</p>
+    <p style="color: #666;">This code expires in 10 minutes. If you did not request this, you can ignore this email.</p>
+  </div>
+`;
+
+const buildDashboardOtpHtml = (otp) => `
+  <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+    <h2>Sign in to NilesCart Dashboard</h2>
     <p>Use this verification code to continue:</p>
     <p style="font-size: 32px; font-weight: bold; letter-spacing: 6px; margin: 24px 0;">${otp}</p>
     <p style="color: #666;">This code expires in 10 minutes. If you did not request this, you can ignore this email.</p>
@@ -73,4 +83,11 @@ export const sendCustomerLoginOtp = async (email, otp) =>
     subject: CUSTOMER_OTP_SUBJECT,
     buildHtml: buildCustomerOtpHtml,
     devLabel: "Customer login",
+  });
+
+export const sendDashboardLoginOtp = async (email, otp) =>
+  sendOtpEmail(email, otp, {
+    subject: DASHBOARD_OTP_SUBJECT,
+    buildHtml: buildDashboardOtpHtml,
+    devLabel: "Dashboard login",
   });

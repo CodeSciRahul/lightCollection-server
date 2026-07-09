@@ -30,6 +30,7 @@ import {
 import {
   sendSellerVerificationOtp,
   sendCustomerLoginOtp,
+  sendDashboardLoginOtp,
 } from "../services/email.service.js";
 import { issueAuthToken } from "../utils/helpers/authCookieHelpers.js";
 import { createError } from "../utils/AppError.js";
@@ -60,6 +61,11 @@ const buildAuthPayload = async (user) => {
 const sendOtpToSeller = async (email) => {
   const otp = await saveEmailOtp(email, OTP_PURPOSES.SELLER_SIGNUP);
   await sendSellerVerificationOtp(email, otp);
+};
+
+const sendOtpToDashboard = async (email, purpose) => {
+  const otp = await saveEmailOtp(email, purpose);
+  await sendDashboardLoginOtp(email, otp);
 };
 
 const assertCustomerAuthEligible = (user) => {
@@ -179,6 +185,88 @@ export const verifyCustomerOtp = async ({ email, otp }) => {
 
   const payload = await buildAuthPayload(user);
   return { ...payload, isNewUser, success: true };
+};
+
+/** Dashboard seller/admin — send email OTP for passwordless login */
+export const sendDashboardOtp = async ({ email, loginType }) => {
+  if (!email) throw createError("Email is required", 400);
+
+  const normalizedEmail = assertValidEmail(email);
+  const type = (loginType || "seller").toLowerCase();
+  const purpose =
+    type === "admin" ? OTP_PURPOSES.ADMIN_LOGIN : OTP_PURPOSES.SELLER_LOGIN;
+
+  const user = await UserRepository.findByEmail(normalizedEmail);
+
+  if (type === "admin") {
+    // Admin: only seeded/existing admin accounts can receive OTP.
+    if (!user) {
+      throw createError("No admin account found for this email.", 404);
+    }
+    if (user.role !== "admin") {
+      throw createError("This account is not an admin account.", 403);
+    }
+  } else {
+    // Seller: allow new emails (auto-register on verification), but block other roles.
+    if (user) {
+      await assertCanAccessSellerAuth(user);
+    } else {
+      await assertEmailMobileNotRegisteredAsCustomer({ email: normalizedEmail });
+    }
+  }
+
+  await sendOtpToDashboard(normalizedEmail, purpose);
+
+  return {
+    success: true,
+    message: OTP_SENT_MESSAGE,
+    email: normalizedEmail,
+    expiresIn: getOtpExpirySeconds(),
+  };
+};
+
+/** Dashboard seller/admin — verify OTP and issue JWT */
+export const verifyDashboardOtp = async ({ email, otp, loginType }) => {
+  if (!email || !otp) {
+    throw createError("Email and verification code are required", 400);
+  }
+
+  const normalizedEmail = assertValidEmail(email);
+  const type = (loginType || "seller").toLowerCase();
+  const purpose =
+    type === "admin" ? OTP_PURPOSES.ADMIN_LOGIN : OTP_PURPOSES.SELLER_LOGIN;
+
+  const code = String(otp).trim();
+  if (!regex.OTP_SIX_DIGIT.test(code)) {
+    throw createError("Verification code must be a 6-digit number", 400);
+  }
+
+  await verifyEmailOtp(normalizedEmail, code, purpose);
+
+  let user = await UserRepository.findByEmail(normalizedEmail);
+
+  if (type === "admin") {
+    if (!user) {
+      throw createError("No admin account found for this email.", 404);
+    }
+    if (user.role !== "admin") {
+      throw createError("This account is not an admin account.", 403);
+    }
+  } else {
+    if (!user) {
+      // Auto-register seller on first successful OTP verification.
+      user = await createSellerUser({
+        normalizedEmail,
+        authProvider: AUTH_PROVIDERS.PASSWORD,
+        isVerified: true,
+      });
+    } else {
+      user = await assertCanAccessSellerAuth(user);
+    }
+  }
+
+  const payload = await buildAuthPayload(user);
+  return { ...payload, success: true };
 };
 
 /** Storefront customer login — creates customer account if new */

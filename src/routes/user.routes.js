@@ -14,6 +14,8 @@ import {
   registerSellerAccount,
   sendCustomerOtp,
   verifyCustomerOtp,
+  sendDashboardOtp,
+  verifyDashboardOtp,
 } from "../controllers/otp.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 
@@ -21,6 +23,8 @@ const router = Router();
 
 router.post("/send-otp", sendCustomerOtp);
 router.post("/verify-otp", verifyCustomerOtp);
+router.post("/dashboard/send-otp", sendDashboardOtp);
+router.post("/dashboard/verify-otp", verifyDashboardOtp);
 router.post("/login", login);
 router.post("/seller/register", registerSellerAccount);
 router.post("/seller/send-otp", sendSellerSignupOtp);

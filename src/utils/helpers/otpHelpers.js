@@ -6,6 +6,8 @@ import { createError } from "../AppError.js";
 export const OTP_PURPOSES = {
   SELLER_SIGNUP: "seller_signup",
   CUSTOMER_LOGIN: "customer_login",
+  SELLER_LOGIN: "seller_login",
+  ADMIN_LOGIN: "admin_login",
 };
 
 const OTP_EXPIRY_MINUTES = 10;
