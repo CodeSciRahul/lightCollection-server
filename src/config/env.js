@@ -37,11 +37,6 @@ export const appConfig = {
     fromEmail: trim(process.env.RESEND_FROM_EMAIL),
   },
 
-  firebase: {
-    serviceAccountPath: trim(process.env.FIREBASE_SERVICE_ACCOUNT_PATH),
-    serviceAccount: trim(process.env.FIREBASE_SERVICE_ACCOUNT),
-  },
-
   admin: {
     email: trim(process.env.ADMIN_EMAIL),
     password: trim(process.env.ADMIN_PASSWORD),

@@ -1,8 +1,20 @@
 import jwt from "jsonwebtoken";
 import { appConfig } from "../../config/index.js";
+import { createError } from "../AppError.js";
 
-export const issueAuthToken = (userId) =>
-  jwt.sign({ userId }, appConfig.jwt.secret, { expiresIn: "7d" });
+const assertJwtSecret = () => {
+  if (!appConfig.jwt.secret) {
+    throw createError(
+      "JWT_SECRET is not configured on the server.",
+      503
+    );
+  }
+};
+
+export const issueAuthToken = (userId) => {
+  assertJwtSecret();
+  return jwt.sign({ userId }, appConfig.jwt.secret, { expiresIn: "7d" });
+};
 
 export const setAuthCookie = (res, token) => {
   res.cookie("token", token, {

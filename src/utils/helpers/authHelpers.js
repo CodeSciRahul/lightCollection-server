@@ -1,6 +1,9 @@
-import { initFirebaseAdmin } from "../../vendor/firebase.vendor.js";
+import crypto from "crypto";
 import * as UserRepository from "../../repositories/user.repository.js";
 import * as SellerRepository from "../../repositories/seller.repository.js";
+import { createError } from "../AppError.js";
+import { verifyUserPassword } from "./passwordHelpers.js";
+import { verifyAuthToken } from "./authTokenHelpers.js";
 
 export const CUSTOMER_ACCOUNT_MESSAGE =
   "This email or mobile number is already registered as a customer account. Customer accounts cannot become sellers. Please use a different email or mobile number.";
@@ -8,30 +11,26 @@ export const CUSTOMER_ACCOUNT_MESSAGE =
 export const CUSTOMER_CANNOT_BECOME_SELLER_MESSAGE =
   "Customer accounts cannot register as sellers. Please sign up with a different email or mobile number that is not used on the storefront.";
 
-export const verifyFirebaseToken = async (token) => {
-  if (!token) {
-    const err = new Error("Firebase token is required");
-    err.statusCode = 400;
-    throw err;
-  }
-
-  const admin = initFirebaseAdmin();
-  if (!admin.apps?.length) {
-    const err = new Error("Firebase Admin is not configured on server");
-    err.statusCode = 503;
-    throw err;
-  }
-
-  return admin.auth().verifyIdToken(token);
+export const AUTH_PROVIDERS = {
+  PASSWORD: "password",
+  GOOGLE: "google.com",
+  APPLE: "apple.com",
 };
+
+/** Internal stable user identifier (stored in legacy firebaseUid column). */
+export const generateAuthUid = () => crypto.randomUUID();
 
 export const loadSellerProfile = (userId) => SellerRepository.findByUser(userId);
 
 export const isStorefrontCustomer = (user) => user?.role === "customer";
 
-export const findUserByIdentity = async ({ firebaseUid, email, mobileNumber }) => {
-  if (firebaseUid) {
-    const byUid = await UserRepository.findByFirebaseUid(firebaseUid);
+export const isOAuthSignIn = (claims) =>
+  claims?.sign_in_provider === AUTH_PROVIDERS.GOOGLE ||
+  claims?.sign_in_provider === AUTH_PROVIDERS.APPLE;
+
+export const findUserByIdentity = async ({ authUid, email, mobileNumber }) => {
+  if (authUid) {
+    const byUid = await UserRepository.findByFirebaseUid(authUid);
     if (byUid) return byUid;
   }
 
@@ -48,34 +47,63 @@ export const findUserByIdentity = async ({ firebaseUid, email, mobileNumber }) =
   return null;
 };
 
-export const linkFirebaseUid = async (user, firebaseUid) => {
+export const linkAuthUid = async (user, authUid) => {
   if (user && !user.firebaseUid) {
-    user.firebaseUid = firebaseUid;
+    user.firebaseUid = authUid;
     await user.save();
   }
 };
 
-export const resolveUserFromFirebase = async (decoded, mobileNumber) => {
+export const resolveUserFromAuthClaims = async (claims, mobileNumber) => {
+  if (claims?._user) {
+    await linkAuthUid(claims._user, claims.uid);
+    return claims._user;
+  }
+
   let user = await findUserByIdentity({
-    firebaseUid: decoded.uid,
-    email: decoded.email,
-    mobileNumber: mobileNumber || decoded.phone_number,
+    authUid: claims.uid,
+    email: claims.email,
+    mobileNumber: mobileNumber || claims.phone_number,
   });
 
   if (user) {
-    await linkFirebaseUid(user, decoded.uid);
+    await linkAuthUid(user, claims.uid);
     return user;
   }
 
   if (mobileNumber) {
     user = await findUserByIdentity({ mobileNumber });
     if (user) {
-      await linkFirebaseUid(user, decoded.uid);
+      await linkAuthUid(user, claims.uid);
       return user;
     }
   }
 
   return null;
+};
+
+export const resolveAuthClaims = async ({ token, email, password }) => {
+  if (email && password) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await UserRepository.findByEmailWithPassword(normalizedEmail);
+
+    if (!user) {
+      throw createError("Invalid email or password.", 401);
+    }
+
+    await verifyUserPassword(user, password);
+
+    return {
+      uid: user.firebaseUid || String(user._id),
+      email: user.email,
+      name: user.name,
+      phone_number: user.mobileNumber,
+      sign_in_provider: user.authProvider || AUTH_PROVIDERS.PASSWORD,
+      _user: user,
+    };
+  }
+
+  return verifyAuthToken(token);
 };
 
 /** Block if email or mobile is already used by a storefront customer account */
@@ -99,9 +127,7 @@ export const assertEmailMobileNotRegisteredAsCustomer = async ({
     if (excludeUserId && String(existing._id) === String(excludeUserId)) continue;
 
     if (isStorefrontCustomer(existing)) {
-      const err = new Error(CUSTOMER_ACCOUNT_MESSAGE);
-      err.statusCode = 403;
-      throw err;
+      throw createError(CUSTOMER_ACCOUNT_MESSAGE, 403);
     }
   }
 };
@@ -118,9 +144,7 @@ export const normalizeSellerDashboardUser = async (user) => {
       return user;
     }
 
-    const err = new Error(CUSTOMER_CANNOT_BECOME_SELLER_MESSAGE);
-    err.statusCode = 403;
-    throw err;
+    throw createError(CUSTOMER_CANNOT_BECOME_SELLER_MESSAGE, 403);
   }
 
   return user;
@@ -128,9 +152,7 @@ export const normalizeSellerDashboardUser = async (user) => {
 
 export const assertCanAccessSellerAuth = async (user) => {
   if (user.role === "admin") {
-    const err = new Error("This account is an admin account. Please use admin login.");
-    err.statusCode = 403;
-    throw err;
+    throw createError("This account is an admin account. Please use admin login.", 403);
   }
 
   if (user.role === "seller") {

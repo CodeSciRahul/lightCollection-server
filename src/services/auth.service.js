@@ -4,21 +4,33 @@ import * as WishlistRepository from "../repositories/wishlist.repository.js";
 import { formatUserProfile } from "../utils/helpers/userHelpers.js";
 import { normalizeStoredImage } from "../utils/helpers/storedImageHelpers.js";
 import {
-  verifyFirebaseToken,
   loadSellerProfile,
-  resolveUserFromFirebase,
+  resolveUserFromAuthClaims,
+  resolveAuthClaims,
   assertCanAccessSellerAuth,
   assertEmailMobileNotRegisteredAsCustomer,
-  linkFirebaseUid,
+  linkAuthUid,
+  generateAuthUid,
+  isOAuthSignIn,
+  AUTH_PROVIDERS,
   CUSTOMER_ACCOUNT_MESSAGE,
 } from "../utils/helpers/authHelpers.js";
 import { assertValidEmail } from "../utils/helpers/emailValidation.js";
 import {
-  isGoogleSignIn,
+  hashPassword,
+  assertValidPassword,
+  verifyUserPassword,
+} from "../utils/helpers/passwordHelpers.js";
+import {
   saveEmailOtp,
   verifyEmailOtp,
+  OTP_PURPOSES,
+  getOtpExpirySeconds,
 } from "../utils/helpers/otpHelpers.js";
-import { sendSellerVerificationOtp } from "../services/email.service.js";
+import {
+  sendSellerVerificationOtp,
+  sendCustomerLoginOtp,
+} from "../services/email.service.js";
 import { issueAuthToken } from "../utils/helpers/authCookieHelpers.js";
 import { createError } from "../utils/AppError.js";
 import { messages, regex } from "../constants/index.js";
@@ -46,58 +58,184 @@ const buildAuthPayload = async (user) => {
 };
 
 const sendOtpToSeller = async (email) => {
-  const otp = await saveEmailOtp(email);
+  const otp = await saveEmailOtp(email, OTP_PURPOSES.SELLER_SIGNUP);
   await sendSellerVerificationOtp(email, otp);
 };
 
-/** Storefront customer login — creates customer account if new */
-export const login = async ({ token }) => {
-  const decoded = await verifyFirebaseToken(token);
-  let user = await resolveUserFromFirebase(decoded);
+const assertCustomerAuthEligible = (user) => {
+  if (!user) return;
+
+  if (user.role === "seller") {
+    throw createError(
+      "This email is registered as a seller account. Please use the seller dashboard to sign in.",
+      403
+    );
+  }
+
+  if (user.role === "admin") {
+    throw createError(
+      "This email is registered as an admin account. Please use the admin dashboard to sign in.",
+      403
+    );
+  }
+};
+
+const createCustomerUser = async (normalizedEmail) => {
+  try {
+    return await UserRepository.create({
+      firebaseUid: generateAuthUid(),
+      email: normalizedEmail,
+      name: normalizedEmail.split("@")[0],
+      role: "customer",
+      authProvider: AUTH_PROVIDERS.PASSWORD,
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      const existingUser = await UserRepository.findByEmail(normalizedEmail);
+      if (existingUser) return existingUser;
+    }
+    throw err;
+  }
+};
+
+const createSellerUser = async ({
+  normalizedEmail,
+  password,
+  authProvider = AUTH_PROVIDERS.PASSWORD,
+  isVerified = false,
+}) => {
+  const userData = {
+    firebaseUid: generateAuthUid(),
+    email: normalizedEmail,
+    role: "seller",
+    isVerified,
+    authProvider,
+  };
+
+  if (password) {
+    assertValidPassword(password);
+    userData.passwordHash = await hashPassword(password);
+  }
+
+  return UserRepository.create(userData);
+};
+
+/** Customer storefront — send email OTP for unified login/signup */
+export const sendCustomerOtp = async ({ email }) => {
+  if (!email) throw createError("Email is required", 400);
+
+  let normalizedEmail;
+  try {
+    normalizedEmail = assertValidEmail(email);
+  } catch (err) {
+    throw createError(err.message, err.statusCode || 400);
+  }
+
+  const existingUser = await UserRepository.findByEmail(normalizedEmail);
+  assertCustomerAuthEligible(existingUser);
+
+  const otp = await saveEmailOtp(normalizedEmail, OTP_PURPOSES.CUSTOMER_LOGIN);
+  await sendCustomerLoginOtp(normalizedEmail, otp);
+
+  return {
+    success: true,
+    message: OTP_SENT_MESSAGE,
+    email: normalizedEmail,
+    expiresIn: getOtpExpirySeconds(),
+  };
+};
+
+/** Customer storefront — verify OTP, create user if new, issue JWT */
+export const verifyCustomerOtp = async ({ email, otp }) => {
+  if (!email || !otp) {
+    throw createError("Email and verification code are required", 400);
+  }
+
+  let normalizedEmail;
+  try {
+    normalizedEmail = assertValidEmail(email);
+  } catch (err) {
+    throw createError(err.message, err.statusCode || 400);
+  }
+
+  const code = String(otp).trim();
+  if (!regex.OTP_SIX_DIGIT.test(code)) {
+    throw createError("Verification code must be a 6-digit number", 400);
+  }
+
+  await verifyEmailOtp(normalizedEmail, code, OTP_PURPOSES.CUSTOMER_LOGIN);
+
+  let user = await UserRepository.findByEmail(normalizedEmail);
+  assertCustomerAuthEligible(user);
+
+  let isNewUser = false;
 
   if (!user) {
-    user = await UserRepository.create({
-      firebaseUid: decoded.uid,
-      email: decoded.email?.toLowerCase() || undefined,
-      name: decoded.name || decoded.email?.split("@")[0],
-      role: "customer",
-    });
+    user = await createCustomerUser(normalizedEmail);
+    isNewUser = true;
+  } else if (!user.firebaseUid) {
+    await linkAuthUid(user, generateAuthUid());
+  }
+
+  const payload = await buildAuthPayload(user);
+  return { ...payload, isNewUser, success: true };
+};
+
+/** Storefront customer login — creates customer account if new */
+export const login = async ({ token, email, password }) => {
+  const claims = await resolveAuthClaims({ token, email, password });
+  let user = await resolveUserFromAuthClaims(claims);
+
+  if (!user) {
+    if (!claims.email) {
+      throw createError("A verified email address is required.", 400);
+    }
+
+    user = await createCustomerUser(assertValidEmail(claims.email));
   }
 
   return buildAuthPayload(user);
 };
 
-/** Dashboard seller login — blocked until email OTP verified (Google exempt) */
-export const loginSeller = async ({ token }) => {
-  const decoded = await verifyFirebaseToken(token);
-  if (!decoded.email) {
+/** Dashboard seller login — blocked until email OTP verified (OAuth exempt) */
+export const loginSeller = async ({ token, email, password }) => {
+  const claims = await resolveAuthClaims({ token, email, password });
+
+  if (!claims.email) {
     throw createError(
       "A verified email address is required to sign in as a seller.",
       400
     );
   }
 
-  const normalizedEmail = assertValidEmail(decoded.email);
-  let user = await resolveUserFromFirebase(decoded);
-  const googleSignIn = isGoogleSignIn(decoded);
+  const normalizedEmail = assertValidEmail(claims.email);
+  let user = await resolveUserFromAuthClaims(claims);
+  const oauthSignIn = isOAuthSignIn(claims);
 
   if (!user) {
-    if (!googleSignIn) {
+    if (!oauthSignIn) {
       throw createError("No account found. Please register first.", 404);
     }
+
     await assertEmailMobileNotRegisteredAsCustomer({ email: normalizedEmail });
-    user = await UserRepository.create({
-      firebaseUid: decoded.uid,
-      email: normalizedEmail,
-      role: "seller",
+    user = await createSellerUser({
+      normalizedEmail,
+      authProvider: claims.sign_in_provider,
       isVerified: true,
     });
   } else {
     user = await assertCanAccessSellerAuth(user);
+
+    if (password) {
+      const userWithPassword = await UserRepository.findByEmailWithPassword(normalizedEmail);
+      if (userWithPassword) {
+        await verifyUserPassword(userWithPassword, password);
+      }
+    }
   }
 
-  if (!user?.isVerified && !googleSignIn) {
-    const otp = await saveEmailOtp(normalizedEmail);
+  if (!user?.isVerified && !oauthSignIn) {
+    const otp = await saveEmailOtp(normalizedEmail, OTP_PURPOSES.SELLER_SIGNUP);
     await sendSellerVerificationOtp(normalizedEmail, otp);
     throw createError(
       `Please verify your email before signing in. ${OTP_SENT_MESSAGE}`,
@@ -109,15 +247,22 @@ export const loginSeller = async ({ token }) => {
 };
 
 /** Dashboard admin login — admin role only */
-export const loginAdmin = async ({ token, mobileNumber }) => {
-  const decoded = await verifyFirebaseToken(token);
-  const user = await resolveUserFromFirebase(decoded, mobileNumber);
+export const loginAdmin = async ({ token, email, password, mobileNumber }) => {
+  const claims = await resolveAuthClaims({ token, email, password });
+  const user = await resolveUserFromAuthClaims(claims, mobileNumber);
 
   if (!user) {
     throw createError(
       "No admin account found for this email or mobile number. Contact the platform owner.",
       404
     );
+  }
+
+  if (password) {
+    const userWithPassword = await UserRepository.findByEmailWithPassword(user.email);
+    if (userWithPassword) {
+      await verifyUserPassword(userWithPassword, password);
+    }
   }
 
   if (user.role === "customer") {
@@ -184,7 +329,7 @@ export const deleteAccount = async (user) => {
   }
   user.mobileNumber = undefined;
   user.name = "Deleted User";
-  user.isMobileVerified = false;
+  user.passwordHash = undefined;
 
   await user.save();
 
@@ -248,7 +393,7 @@ export const verifySellerSignupOtp = async ({ email, otp }) => {
     };
   }
 
-  await verifyEmailOtp(normalizedEmail, code);
+  await verifyEmailOtp(normalizedEmail, code, OTP_PURPOSES.SELLER_SIGNUP);
 
   user.isVerified = true;
   await user.save();
@@ -259,31 +404,49 @@ export const verifySellerSignupOtp = async ({ email, otp }) => {
   };
 };
 
-export const registerSellerAccount = async ({ token }) => {
-  if (!token) throw createError("Firebase token is required");
+export const registerSellerAccount = async ({
+  token,
+  email,
+  password,
+  signInProvider,
+}) => {
+  let claims;
 
-  let decoded;
-  try {
-    decoded = await verifyFirebaseToken(token);
-  } catch (err) {
-    throw createError(err.message, err.statusCode || 401);
+  if (email && password) {
+    let normalizedEmail;
+    try {
+      normalizedEmail = assertValidEmail(email);
+    } catch (err) {
+      throw createError(err.message, err.statusCode || 400);
+    }
+
+    assertValidPassword(password);
+
+    claims = {
+      uid: generateAuthUid(),
+      email: normalizedEmail,
+      sign_in_provider: signInProvider || AUTH_PROVIDERS.PASSWORD,
+      _password: password,
+    };
+  } else {
+    if (!token) throw createError("Authentication token is required", 400);
+
+    try {
+      claims = await resolveAuthClaims({ token });
+    } catch (err) {
+      throw createError(err.message, err.statusCode || 401);
+    }
   }
 
-  if (!decoded.email) {
+  if (!claims.email) {
     throw createError(
       "A verified email address is required to register as a seller.",
       400
     );
   }
 
-  let normalizedEmail;
-  try {
-    normalizedEmail = assertValidEmail(decoded.email);
-  } catch (err) {
-    throw createError(err.message, err.statusCode || 400);
-  }
-
-  let user = await resolveUserFromFirebase(decoded);
+  const normalizedEmail = assertValidEmail(claims.email);
+  let user = await resolveUserFromAuthClaims(claims);
 
   if (user) {
     if (user.role === "customer") {
@@ -298,7 +461,7 @@ export const registerSellerAccount = async ({ token }) => {
         );
       }
 
-      await linkFirebaseUid(user, decoded.uid);
+      await linkAuthUid(user, claims.uid);
       await sendOtpToSeller(normalizedEmail);
 
       return {
@@ -313,16 +476,16 @@ export const registerSellerAccount = async ({ token }) => {
 
   await assertEmailMobileNotRegisteredAsCustomer({ email: normalizedEmail });
 
-  const googleSignIn = isGoogleSignIn(decoded);
+  const oauthSignIn = isOAuthSignIn(claims);
 
-  user = await UserRepository.create({
-    firebaseUid: decoded.uid,
-    email: normalizedEmail,
-    role: "seller",
-    isVerified: googleSignIn,
+  user = await createSellerUser({
+    normalizedEmail,
+    password: claims._password,
+    authProvider: claims.sign_in_provider,
+    isVerified: oauthSignIn,
   });
 
-  if (googleSignIn) {
+  if (oauthSignIn) {
     return {
       message: "Account created successfully.",
       requiresVerification: false,

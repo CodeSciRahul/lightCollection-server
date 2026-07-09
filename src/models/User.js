@@ -8,6 +8,15 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    passwordHash: {
+      type: String,
+      select: false,
+    },
+    authProvider: {
+      type: String,
+      enum: ["password", "google.com", "apple.com"],
+      default: "password",
+    },
     mobileNumber: {
       type: String,
       unique: true,

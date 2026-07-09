@@ -15,6 +15,9 @@ export const findByFirebaseUid = (firebaseUid) => User.findOne({ firebaseUid });
 export const findByEmail = (email) =>
   User.findOne({ email: email?.toLowerCase() });
 
+export const findByEmailWithPassword = (email) =>
+  User.findOne({ email: email?.toLowerCase() }).select("+passwordHash");
+
 export const findByEmailOrMobile = (email, mobileNumber) => {
   const or = [];
   if (email) or.push({ email: email.toLowerCase() });

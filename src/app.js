@@ -2,14 +2,11 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { appConfig } from "./config/index.js";
-import { initFirebaseAdmin } from "./vendor/firebase.vendor.js";
 import apiRoutes from "./routes/index.js";
 import { notFound, errorHandler } from "./middlewares/index.js";
 
 export const createApp = () => {
   const app = express();
-
-  initFirebaseAdmin();
 
   app.use(
     cors({
@@ -17,7 +14,12 @@ export const createApp = () => {
       credentials: true,
     })
   );
-  app.use(express.json());
+  app.use(
+    express.json({
+      limit: "1mb",
+      strict: true,
+    })
+  );
   app.use(cookieParser());
 
   app.use("/api", apiRoutes);

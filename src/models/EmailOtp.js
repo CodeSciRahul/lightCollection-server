@@ -14,7 +14,7 @@ const emailOtpSchema = new mongoose.Schema(
     },
     purpose: {
       type: String,
-      enum: ["seller_signup"],
+      enum: ["seller_signup", "customer_login"],
       default: "seller_signup",
     },
     attempts: {

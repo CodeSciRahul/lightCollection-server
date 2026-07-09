@@ -5,8 +5,23 @@ export const notFound = (req, res) => {
   });
 };
 
+const isJsonParseError = (err) =>
+  err?.type === "entity.parse.failed" ||
+  (err instanceof SyntaxError && err.status === 400);
+
 export const errorHandler = (err, req, res, next) => {
-  console.error(err);
+  if (isJsonParseError(err)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid request body. Expected valid JSON.",
+    });
+  }
+
+  const status = err.statusCode || err.status || 500;
+
+  if (status >= 500) {
+    console.error(err);
+  }
 
   if (err.name === "ValidationError") {
     const messages = Object.values(err.errors).map((e) => e.message);
@@ -28,7 +43,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  res.status(err.statusCode || 500).json({
+  res.status(status).json({
     success: false,
     message: err.message || "Internal server error",
   });

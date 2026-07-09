@@ -1,18 +1,17 @@
 import mongoose from "mongoose";
 import { appConfig, connectDB } from "../src/config/index.js";
-import { initFirebaseAdmin } from "../src/vendor/firebase.vendor.js";
+import { hashPassword } from "../src/utils/helpers/passwordHelpers.js";
+import { generateAuthUid } from "../src/utils/helpers/authHelpers.js";
 import User from "../src/models/User.js";
 
 /**
- * Seeds the first platform admin in Firebase Auth + MongoDB.
+ * Seeds the first platform admin in MongoDB.
  *
  * Usage:
  *   ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=secretpassword npm run seed:admin
  *
  * Optional:
  *   ADMIN_NAME="Platform Admin"
- *
- * Password is stored in Firebase Auth only — never in MongoDB.
  */
 const seedAdmin = async () => {
   const email = appConfig.admin.email?.toLowerCase();
@@ -31,14 +30,6 @@ const seedAdmin = async () => {
 
   if (password.length < 6) {
     console.error("Error: ADMIN_PASSWORD must be at least 6 characters.");
-    process.exit(1);
-  }
-
-  const firebaseAdmin = initFirebaseAdmin();
-  if (!firebaseAdmin.apps?.length) {
-    console.error(
-      "Error: Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_PATH."
-    );
     process.exit(1);
   }
 
@@ -62,47 +53,24 @@ const seedAdmin = async () => {
     process.exit(1);
   }
 
-  let firebaseUser;
-
-  try {
-    firebaseUser = await firebaseAdmin.auth().getUserByEmail(email);
-    console.log(`Firebase user already exists for ${email} (uid: ${firebaseUser.uid}).`);
-
-    const linkedUser = await User.findOne({ firebaseUid: firebaseUser.uid });
-    if (linkedUser) {
-      console.error(`Error: Firebase UID is already linked to ${linkedUser.email}.`);
-      await mongoose.disconnect();
-      process.exit(1);
-    }
-  } catch (err) {
-    if (err.code !== "auth/user-not-found") {
-      throw err;
-    }
-
-    firebaseUser = await firebaseAdmin.auth().createUser({
-      email,
-      password,
-      displayName: name,
-      emailVerified: true,
-    });
-    console.log(`Firebase admin user created (uid: ${firebaseUser.uid}).`);
-  }
+  const passwordHash = await hashPassword(password);
 
   const mongoUser = await User.create({
-    firebaseUid: firebaseUser.uid,
+    firebaseUid: generateAuthUid(),
     email,
     name,
     role: "admin",
     isVerified: true,
     isActive: true,
+    passwordHash,
+    authProvider: "password",
   });
 
   console.log("\nAdmin seeded successfully:");
-  console.log(`  Email:        ${mongoUser.email}`);
-  console.log(`  Name:         ${mongoUser.name}`);
-  console.log(`  Firebase UID: ${mongoUser.firebaseUid}`);
-  console.log(`  MongoDB ID:   ${mongoUser._id}`);
-  console.log("\nSign in via the dashboard admin tab. Password lives in Firebase Auth only.");
+  console.log(`  Email:      ${mongoUser.email}`);
+  console.log(`  Name:       ${mongoUser.name}`);
+  console.log(`  MongoDB ID: ${mongoUser._id}`);
+  console.log("\nSign in via the dashboard admin tab using email and password.");
 
   await mongoose.disconnect();
 };
