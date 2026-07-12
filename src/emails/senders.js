@@ -47,6 +47,12 @@ export const EMAIL_SENDERS = {
     displayName: brand.name,
     purpose: "One-way automated system emails",
   },
+  inventory: {
+    key: "inventory",
+    local: "inventory",
+    displayName: `${brand.name} Inventory`,
+    purpose: "Catalog and stock alerts",
+  },
 };
 
 export const resolveFromAddress = (senderKey, { domain, overrides = {} } = {}) => {
@@ -124,5 +130,26 @@ export const SELLER_EVENT_META = {
     subject: () => `Important update to ${brand.name} seller terms`,
     priority: "Important",
     replyTo: defaults.legalEmail,
+  },
+};
+
+export const INVENTORY_EVENT_META = {
+  LOW_STOCK: {
+    id: "C4",
+    sender: "inventory",
+    subject: ({ productTitle, variantSku, currentStock } = {}) =>
+      `Low stock alert: ${productTitle || "Product"}${
+        variantSku ? ` (${variantSku})` : ""
+      } — ${currentStock ?? "?"} left`,
+    priority: "Important",
+  },
+  OUT_OF_STOCK: {
+    id: "C5",
+    sender: "inventory",
+    subject: ({ productTitle, variantSku } = {}) =>
+      `Out of stock: ${productTitle || "Product"}${
+        variantSku ? ` (${variantSku})` : ""
+      }`,
+    priority: "Important",
   },
 };

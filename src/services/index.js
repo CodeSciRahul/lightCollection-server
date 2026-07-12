@@ -8,6 +8,7 @@ export * from "./category.service.js";
 export * from "./coupon.service.js";
 export * from "./email.service.js";
 export * from "./sellerEmail.service.js";
+export * from "./inventoryEmail.service.js";
 export * from "./flutterwave.service.js";
 export * from "./order.service.js";
 export * from "./payment.service.js";

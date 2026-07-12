@@ -1,14 +1,19 @@
 /**
- * Dev helper — renders all seller lifecycle emails (B1–B9) to HTML files.
+ * Dev helper — renders seller + inventory emails to HTML files.
  * Usage: node scripts/previewSellerEmails.mjs
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderSellerEmail, SELLER_EVENT_META } from "../src/emails/index.js";
+import {
+  renderSellerEmail,
+  renderInventoryEmail,
+  SELLER_EVENT_META,
+  INVENTORY_EVENT_META,
+} from "../src/emails/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const outDir = path.join(__dirname, "../tmp/email-previews/seller");
+const outDir = path.join(__dirname, "../tmp/email-previews");
 
 const sample = {
   sellerName: "Amina Okello",
@@ -62,28 +67,44 @@ const sample = {
     businessProof: false,
     addressProof: true,
   },
+  productTitle: "Linen Midi Dress",
+  variantSku: "LMD-M-SAGE",
+  size: "M",
+  color: "Sage",
+  currentStock: 3,
+  previousStock: 8,
+  threshold: 5,
+  detectedAt: new Date(),
+  inventoryUrl: "http://localhost:5173/seller/products",
+  productEditUrl:
+    "http://localhost:5173/seller/products/665f1a2b3c4d5e6f7a8b9c0d/edit",
 };
 
-await mkdir(outDir, { recursive: true });
+const writeGroup = async (dirName, meta, renderFn) => {
+  const dir = path.join(outDir, dirName);
+  await mkdir(dir, { recursive: true });
+  const indexRows = [];
 
-const indexRows = [];
+  for (const eventKey of Object.keys(meta)) {
+    const rendered = renderFn(eventKey, sample);
+    const fileName = `${rendered.id}-${eventKey.toLowerCase()}.html`;
+    await writeFile(path.join(dir, fileName), rendered.html, "utf8");
+    indexRows.push(
+      `<li><a href="./${fileName}"><strong>${rendered.id}</strong> — ${rendered.subject}</a> <em>(${rendered.priority} · ${rendered.senderKey}@)</em></li>`
+    );
+    console.log(`Wrote ${dirName}/${fileName}`);
+  }
 
-for (const eventKey of Object.keys(SELLER_EVENT_META)) {
-  const rendered = renderSellerEmail(eventKey, sample);
-  const fileName = `${rendered.id}-${eventKey.toLowerCase()}.html`;
-  await writeFile(path.join(outDir, fileName), rendered.html, "utf8");
-  indexRows.push(
-    `<li><a href="./${fileName}"><strong>${rendered.id}</strong> — ${rendered.subject}</a> <em>(${rendered.priority} · ${rendered.senderKey}@)</em></li>`
+  await writeFile(
+    path.join(dir, "index.html"),
+    `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${dirName} email previews</title>
+    <style>body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;line-height:1.5}li{margin:10px 0}</style>
+    </head><body><h1>NileCart ${dirName} emails</h1><ul>${indexRows.join("")}</ul></body></html>`,
+    "utf8"
   );
-  console.log(`Wrote ${fileName}`);
-}
+};
 
-await writeFile(
-  path.join(outDir, "index.html"),
-  `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Seller email previews</title>
-  <style>body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;line-height:1.5}li{margin:10px 0}</style>
-  </head><body><h1>NileCart seller lifecycle emails</h1><ul>${indexRows.join("")}</ul></body></html>`,
-  "utf8"
-);
+await writeGroup("seller", SELLER_EVENT_META, renderSellerEmail);
+await writeGroup("inventory", INVENTORY_EVENT_META, renderInventoryEmail);
 
-console.log(`\nPreview index: ${path.join(outDir, "index.html")}`);
+console.log(`\nPreviews under: ${outDir}`);

@@ -2,8 +2,10 @@ import { appConfig } from "../config/index.js";
 import { getResendClient } from "../vendor/resend.vendor.js";
 import {
   renderSellerEmail,
+  renderInventoryEmail,
   buildFromHeader,
   SELLER_EVENT_META,
+  INVENTORY_EVENT_META,
 } from "../emails/index.js";
 
 const SELLER_OTP_SUBJECT = "Your NileCart seller verification code";
@@ -191,6 +193,41 @@ export const sendSellerLifecycleEmail = async (eventKey, { to, data } = {}) => {
     replyTo: rendered.replyTo,
     tags: [
       { name: "category", value: "seller_lifecycle" },
+      { name: "event", value: rendered.id },
+    ],
+  });
+};
+
+/**
+ * Send a rendered inventory alert email (C4–C5).
+ */
+export const sendInventoryEmail = async (eventKey, { to, data } = {}) => {
+  if (!INVENTORY_EVENT_META[eventKey]) {
+    throw new Error(`Unknown inventory email event: ${eventKey}`);
+  }
+
+  const rendered = renderInventoryEmail(eventKey, data || {});
+  let from = buildFromHeader(rendered.senderKey, {
+    emailDomain: appConfig.email?.domain,
+    fromOverrides: appConfig.email?.from,
+  });
+
+  if (!appConfig.email?.from?.[rendered.senderKey] && appConfig.resend.fromEmail) {
+    const fallback = appConfig.resend.fromEmail;
+    from = fallback.includes("<")
+      ? fallback
+      : from.replace(/<[^>]+>/, `<${fallback}>`);
+  }
+
+  return sendEmail({
+    to,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    from,
+    replyTo: rendered.replyTo,
+    tags: [
+      { name: "category", value: "inventory" },
       { name: "event", value: rendered.id },
     ],
   });

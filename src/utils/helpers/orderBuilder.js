@@ -12,6 +12,7 @@ import {
   resolveCouponDiscount,
   recordCouponRedemption,
 } from "./couponHelpers.js";
+import * as InventoryEmail from "../../services/inventoryEmail.service.js";
 
 /**
  * Build and persist an order from the user's cart.
@@ -34,6 +35,7 @@ export const buildOrderFromCart = async (
   const coupon = cart?.coupon ? await CouponRepository.findById(cart.coupon) : null;
   const orderItems = [];
   let subtotal = 0;
+  const stockAlerts = [];
 
   for (const item of cart.items) {
     const product = item.product;
@@ -61,8 +63,11 @@ export const buildOrderFromCart = async (
       mrp: variant.mrp,
     });
 
+    const previousStock = variant.stock;
     variant.stock -= item.quantity;
     await product.save();
+
+    stockAlerts.push({ product, variant, previousStock });
   }
 
   if (!orderItems.length) {
@@ -137,6 +142,11 @@ export const buildOrderFromCart = async (
   cart.items = [];
   cart.coupon = undefined;
   await cart.save();
+
+  // Soft-fail inventory alerts after order is persisted
+  for (const alert of stockAlerts) {
+    await InventoryEmail.notifyStockChange(alert);
+  }
 
   return order;
 };

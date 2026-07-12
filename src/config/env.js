@@ -57,6 +57,7 @@ export const appConfig = {
       security: trim(process.env.EMAIL_FROM_SECURITY),
       legal: trim(process.env.EMAIL_FROM_LEGAL),
       noreply: trim(process.env.EMAIL_FROM_NOREPLY),
+      inventory: trim(process.env.EMAIL_FROM_INVENTORY),
     },
     /** Ops inbox(es) for B2 new-seller alerts (comma-separated) */
     adminNotifyEmails: (process.env.EMAIL_ADMIN_NOTIFY || "")
@@ -64,6 +65,11 @@ export const appConfig = {
       .map((e) => e.trim())
       .filter(Boolean),
     defaultFrom: trim(process.env.RESEND_FROM_EMAIL),
+  },
+
+  inventory: {
+    /** Notify seller when stock drops to this level or below (still > 0) */
+    lowStockThreshold: Number(process.env.LOW_STOCK_THRESHOLD) || 5,
   },
 
   admin: {

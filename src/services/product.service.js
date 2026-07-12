@@ -9,6 +9,7 @@ import {
 } from "../utils/helpers/storedImageHelpers.js";
 import { slugify } from "../utils/helpers/userHelpers.js";
 import { createError } from "../utils/AppError.js";
+import * as InventoryEmail from "./inventoryEmail.service.js";
 
 const buildProductFilter = async (query) => {
   const filter = { isActive: true };
@@ -168,6 +169,10 @@ export const updateProduct = async (user, seller, productId, body) => {
     throw createError("You can only update your own products", 403);
   }
 
+  const previousStockBySku = Object.fromEntries(
+    (product.variants || []).map((v) => [v.sku, v.stock])
+  );
+
   const normalized = normalizeProductPayload(body);
   const blocked = ["seller", "_id", "slug"];
 
@@ -178,6 +183,12 @@ export const updateProduct = async (user, seller, productId, body) => {
   });
 
   await product.save();
+
+  await InventoryEmail.notifyProductVariantStockChanges(
+    product,
+    previousStockBySku
+  );
+
   return { product: formatProductForDashboard(product) };
 };
 
