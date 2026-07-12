@@ -5,6 +5,7 @@ import {
   approveSeller,
   rejectSeller,
   deactivateSeller,
+  reactivateSeller,
 } from "../controllers/seller.controller.js";
 import {
   listUsers,
@@ -53,6 +54,7 @@ router.get("/sellers/:id", getSellerById);
 router.patch("/sellers/:id/approve", approveSeller);
 router.patch("/sellers/:id/reject", rejectSeller);
 router.patch("/sellers/:id/deactivate", deactivateSeller);
+router.patch("/sellers/:id/reactivate", reactivateSeller);
 
 router.get("/users", listUsers);
 router.patch("/users/:id/status", updateUserStatus);

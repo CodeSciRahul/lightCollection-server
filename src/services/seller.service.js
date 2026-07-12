@@ -13,6 +13,7 @@ import {
   normalizeSellerDocuments,
 } from "../utils/helpers/storedImageHelpers.js";
 import { createError } from "../utils/AppError.js";
+import * as SellerEmail from "./sellerEmail.service.js";
 
 export const applyForSeller = async (user, body) => {
   if (user.role === "admin") {
@@ -103,6 +104,8 @@ export const applyForSeller = async (user, body) => {
     banner: normalizeStoredImage(banner),
     approvalStatus: "Pending",
   });
+
+  await SellerEmail.notifySellerApplicationSubmitted(seller, user);
 
   return { seller: formatSellerForDashboard(seller), __status: 201 };
 };
@@ -207,6 +210,18 @@ export const updateMySellerProfile = async (seller, body) => {
   }
 
   await seller.save();
+
+  if (wasRejected && seller.approvalStatus === "Pending") {
+    const sellerWithUser = await SellerRepository.findById(seller._id).populate(
+      "user",
+      "name email mobileNumber"
+    );
+    await SellerEmail.notifySellerApplicationSubmitted(
+      sellerWithUser,
+      sellerWithUser?.user
+    );
+  }
+
   return { seller: formatSellerForDashboard(seller) };
 };
 
@@ -245,6 +260,7 @@ export const approveSeller = async (sellerId, { commissionRate }) => {
 
   seller.approvalStatus = "Approved";
   seller.isVerified = true;
+  seller.isActive = true;
   seller.rejectionReason = undefined;
   if (commissionRate !== undefined) {
     seller.commissionRate = commissionRate;
@@ -253,11 +269,13 @@ export const approveSeller = async (sellerId, { commissionRate }) => {
   await seller.save();
   await UserRepository.findByIdAndUpdate(seller.user._id, { role: "seller" });
 
+  await SellerEmail.notifySellerApproved(seller);
+
   return { seller, message: "Seller approved successfully" };
 };
 
 export const rejectSeller = async (sellerId, { reason }) => {
-  const seller = await SellerRepository.findById(sellerId);
+  const seller = await SellerRepository.findById(sellerId).populate("user");
   if (!seller) throw createError("Seller application not found", 404);
 
   if (seller.approvalStatus === "Approved") {
@@ -272,17 +290,45 @@ export const rejectSeller = async (sellerId, { reason }) => {
 
   await seller.save();
 
+  await SellerEmail.notifySellerRejected(seller);
+
   return { seller, message: "Seller application rejected" };
 };
 
-export const deactivateSeller = async (sellerId) => {
+export const deactivateSeller = async (sellerId, { reason } = {}) => {
   const seller = await SellerRepository.findById(sellerId).populate("user");
   if (!seller) throw createError("Seller not found", 404);
+
+  if (seller.isActive === false) {
+    throw createError("Seller is already deactivated", 400);
+  }
 
   seller.isActive = false;
   await seller.save();
 
+  await SellerEmail.notifySellerDeactivated(seller, { reason });
+
   return { seller, message: "Seller deactivated" };
+};
+
+export const reactivateSeller = async (sellerId) => {
+  const seller = await SellerRepository.findById(sellerId).populate("user");
+  if (!seller) throw createError("Seller not found", 404);
+
+  if (seller.approvalStatus !== "Approved") {
+    throw createError("Only approved sellers can be reactivated", 400);
+  }
+
+  if (seller.isActive === true) {
+    throw createError("Seller is already active", 400);
+  }
+
+  seller.isActive = true;
+  await seller.save();
+
+  await SellerEmail.notifySellerReactivated(seller);
+
+  return { seller, message: "Seller reactivated" };
 };
 
 export const getSellerById = async (sellerId) => {

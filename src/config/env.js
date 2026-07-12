@@ -37,6 +37,35 @@ export const appConfig = {
     fromEmail: trim(process.env.RESEND_FROM_EMAIL),
   },
 
+  /** Seller dashboard origin (Vite/React admin+seller app) */
+  dashboardUrl:
+    trim(process.env.DASHBOARD_URL) ||
+    trim(process.env.CLIENT_URL) ||
+    "http://localhost:5173",
+
+  /**
+   * Domain-based transactional From addresses.
+   * Only explicit EMAIL_FROM_* values override the constructed mailbox.
+   */
+  email: {
+    domain: trim(process.env.EMAIL_DOMAIN) || "nilescart.com",
+    from: {
+      accounts: trim(process.env.EMAIL_FROM_ACCOUNTS),
+      seller: trim(process.env.EMAIL_FROM_SELLER),
+      admin: trim(process.env.EMAIL_FROM_ADMIN),
+      support: trim(process.env.EMAIL_FROM_SUPPORT),
+      security: trim(process.env.EMAIL_FROM_SECURITY),
+      legal: trim(process.env.EMAIL_FROM_LEGAL),
+      noreply: trim(process.env.EMAIL_FROM_NOREPLY),
+    },
+    /** Ops inbox(es) for B2 new-seller alerts (comma-separated) */
+    adminNotifyEmails: (process.env.EMAIL_ADMIN_NOTIFY || "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean),
+    defaultFrom: trim(process.env.RESEND_FROM_EMAIL),
+  },
+
   admin: {
     email: trim(process.env.ADMIN_EMAIL),
     password: trim(process.env.ADMIN_PASSWORD),

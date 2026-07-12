@@ -31,7 +31,11 @@ export const rejectSeller = serviceHandler((req) =>
 );
 
 export const deactivateSeller = serviceHandler((req) =>
-  SellerService.deactivateSeller(req.params.id)
+  SellerService.deactivateSeller(req.params.id, req.body)
+);
+
+export const reactivateSeller = serviceHandler((req) =>
+  SellerService.reactivateSeller(req.params.id)
 );
 
 export const getSellerById = serviceHandler((req) =>

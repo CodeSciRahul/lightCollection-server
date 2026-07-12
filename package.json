@@ -8,7 +8,8 @@
     "start": "node index.js",
     "dev": "node --watch index.js",
     "seed": "node scripts/seed.js",
-    "seed:admin": "node scripts/seedAdmin.js"
+    "seed:admin": "node scripts/seedAdmin.js",
+    "preview:emails:seller": "node scripts/previewSellerEmails.mjs"
   },
   "keywords": [],
   "author": "",
