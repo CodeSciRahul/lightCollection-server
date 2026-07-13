@@ -252,59 +252,22 @@ export const notifyOrderStatusChanged = async (
   return results;
 };
 
-/** G1 + G2 — cancellation */
+/** G1 + G2 — cancellation (delegates to cancellation module) */
 export const notifyOrderCancelled = async (
   order,
   { cancelledBy = "customer", reason } = {}
 ) => {
-  if (!order) return { sent: false };
+  const { notifyCustomerCancellation, notifyOpsCancellation } = await import(
+    "./cancellationEmail.service.js"
+  );
 
-  const customer = await resolveCustomer(order);
-  const urls = customerUrls(order);
-  const results = {};
-  const cancelReason = reason || order.cancelReason;
-
-  if (customer.email) {
-    results.customer = await safeSend("G1", () =>
-      sendOrderEmail("ORDER_CANCELLED_CUSTOMER", {
-        to: customer.email,
-        data: {
-          customerName: customer.name,
-          orderNumber: order.orderNumber,
-          cancelReason,
-          cancelledBy,
-          total: order.total,
-          currency: currency(),
-          items: mapItems(order.items),
-          cancelledAt: order.cancelledAt || new Date(),
-          ...urls,
-        },
-      })
-    );
+  if (cancelledBy === "customer") {
+    return notifyCustomerCancellation(order, { reason });
   }
 
-  const sellerGroups = await groupOrderItemsBySeller(order);
-  results.sellers = [];
-  for (const { seller, items: sellerItems } of sellerGroups) {
-    const to = seller.user?.email;
-    if (!to) continue;
-    const result = await safeSend("G2", () =>
-      sendOrderEmail("ORDER_CANCELLED_SELLER", {
-        to,
-        data: {
-          sellerName: seller.user?.name || seller.storeName || "Seller",
-          storeName: seller.storeName,
-          orderNumber: order.orderNumber,
-          cancelReason,
-          items: mapItems(sellerItems),
-          currency: currency(),
-          cancelledAt: order.cancelledAt || new Date(),
-          sellerOrderUrl: sellerOrderUrl(order._id),
-        },
-      })
-    );
-    results.sellers.push({ sellerId: String(seller._id), ...result });
-  }
-
-  return results;
+  return notifyOpsCancellation(order, {
+    cancelledBy,
+    reason,
+    stockRestored: true,
+  });
 };

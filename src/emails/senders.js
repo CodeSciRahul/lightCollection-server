@@ -29,6 +29,12 @@ export const EMAIL_SENDERS = {
     displayName: `${brand.name} Support`,
     purpose: "Support and ticket communication",
   },
+  returns: {
+    key: "returns",
+    local: "returns",
+    displayName: `${brand.name} Returns`,
+    purpose: "Returns, replacements, and cancellations",
+  },
   security: {
     key: "security",
     local: "security",
@@ -64,6 +70,18 @@ export const EMAIL_SENDERS = {
     local: "shipping",
     displayName: `${brand.name} Shipping`,
     purpose: "Shipment and delivery updates",
+  },
+  payments: {
+    key: "payments",
+    local: "payments",
+    displayName: `${brand.name} Payments`,
+    purpose: "Payment receipts, failures, and retries",
+  },
+  finance: {
+    key: "finance",
+    local: "finance",
+    displayName: `${brand.name} Finance`,
+    purpose: "Seller payouts and commission statements",
   },
 };
 
@@ -241,5 +259,129 @@ export const ORDER_EVENT_META = {
     subject: ({ orderNumber } = {}) =>
       `Order ${orderNumber || ""} was cancelled`.trim(),
     priority: "Critical",
+  },
+};
+
+/** Dedicated cancellation lifecycle (G1–G6) — preferred over ORDER_CANCELLED_* */
+export const CANCELLATION_EVENT_META = {
+  CANCEL_CUSTOMER_CONFIRMED: {
+    id: "G1",
+    sender: "returns",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} cancelled`.trim(),
+    priority: "Critical",
+  },
+  CANCEL_CUSTOMER_TO_SELLER: {
+    id: "G2",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} was cancelled by customer`.trim(),
+    priority: "Critical",
+  },
+  CANCEL_PAID_BLOCKED: {
+    id: "G3",
+    sender: "support",
+    subject: () => `Need to cancel a paid order?`,
+    priority: "Important",
+  },
+  CANCEL_OPS_TO_CUSTOMER: {
+    id: "G4",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} was cancelled`.trim(),
+    priority: "Critical",
+  },
+  CANCEL_OPS_TO_SELLER: {
+    id: "G5",
+    sender: "seller",
+    subject: ({ orderNumber } = {}) =>
+      `Cancellation processed: ${orderNumber || ""}`.trim(),
+    priority: "Important",
+  },
+  CANCEL_COD_REFUSAL: {
+    id: "G6",
+    sender: "shipping",
+    subject: ({ orderNumber } = {}) =>
+      `Delivery attempt failed for ${orderNumber || ""}`.trim(),
+    priority: "Important",
+  },
+};
+
+export const PAYMENT_EVENT_META = {
+  PAYMENT_SUCCESS_CUSTOMER: {
+    id: "F1",
+    sender: "payments",
+    subject: ({ orderNumber } = {}) =>
+      `Payment received for order ${orderNumber || ""}`.trim(),
+    priority: "Critical",
+  },
+  PAYMENT_SUCCESS_SELLER: {
+    id: "F2",
+    sender: "payments",
+    subject: ({ orderNumber } = {}) =>
+      `Paid order ready to ship: ${orderNumber || ""}`.trim(),
+    priority: "Critical",
+  },
+  PAYMENT_FAILED_CUSTOMER: {
+    id: "F3",
+    sender: "payments",
+    subject: ({ orderNumber } = {}) =>
+      `Payment failed for order ${orderNumber || ""}`.trim(),
+    priority: "Critical",
+  },
+  PAYMENT_FAILED_SELLER: {
+    id: "F4",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} cancelled — payment unsuccessful`.trim(),
+    priority: "Important",
+  },
+  PAYMENT_PENDING_REMINDER: {
+    id: "F5",
+    sender: "payments",
+    subject: ({ orderNumber } = {}) =>
+      `Reminder: complete payment for ${orderNumber || ""}`.trim(),
+    priority: "Important",
+  },
+  PAYMENT_RETRY: {
+    id: "F6",
+    sender: "payments",
+    subject: ({ orderNumber } = {}) =>
+      `Retry payment for order ${orderNumber || ""}`.trim(),
+    priority: "Important",
+  },
+  PAYMENT_MISMATCH_ADMIN: {
+    id: "F7",
+    sender: "security",
+    subject: ({ txRef } = {}) =>
+      `Payment verification mismatch: ${txRef || "unknown"}`.trim(),
+    priority: "Critical",
+  },
+  PAYMENT_ADJUSTMENT: {
+    id: "F8",
+    sender: "payments",
+    subject: ({ orderNumber } = {}) =>
+      `Payment adjustment for order ${orderNumber || ""}`.trim(),
+    priority: "Important",
+  },
+  SELLER_PAYOUT: {
+    id: "F9",
+    sender: "finance",
+    subject: ({ period } = {}) =>
+      `Your ${brand.name} payout for ${period || "this period"}`.trim(),
+    priority: "Critical",
+  },
+  PAYOUT_FAILED: {
+    id: "F10",
+    sender: "finance",
+    subject: () => `Action required: payout could not be sent`,
+    priority: "Critical",
+  },
+  COMMISSION_STATEMENT: {
+    id: "F11",
+    sender: "finance",
+    subject: ({ period } = {}) =>
+      `Commission statement — ${period || "this period"}`.trim(),
+    priority: "Important",
   },
 };

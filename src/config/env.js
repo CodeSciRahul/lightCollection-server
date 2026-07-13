@@ -22,6 +22,12 @@ export const appConfig = {
       trim(process.env.FLUTTERWAVE_PAYMENT_OPTIONS) ||
       "card,mobilemoneyuganda,banktransfer",
     logoUrl: trim(process.env.PAYMENT_LOGO_URL),
+    /** Minutes after checkout before sending F5 pending reminder */
+    pendingReminderMinutes:
+      Number(process.env.PAYMENT_PENDING_REMINDER_MINUTES) || 30,
+    /** How often the reminder cron scans (minutes) */
+    reminderCheckMinutes:
+      Number(process.env.PAYMENT_REMINDER_CHECK_MINUTES) || 5,
   },
 
   mongodb: {
@@ -60,8 +66,11 @@ export const appConfig = {
       inventory: trim(process.env.EMAIL_FROM_INVENTORY),
       orders: trim(process.env.EMAIL_FROM_ORDERS),
       shipping: trim(process.env.EMAIL_FROM_SHIPPING),
+      payments: trim(process.env.EMAIL_FROM_PAYMENTS),
+      finance: trim(process.env.EMAIL_FROM_FINANCE),
+      returns: trim(process.env.EMAIL_FROM_RETURNS),
     },
-    /** Ops inbox(es) for B2 new-seller alerts (comma-separated) */
+    /** Ops inbox(es) for B2 + F7 alerts (comma-separated) */
     adminNotifyEmails: (process.env.EMAIL_ADMIN_NOTIFY || "")
       .split(",")
       .map((e) => e.trim())

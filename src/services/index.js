@@ -10,6 +10,8 @@ export * from "./email.service.js";
 export * from "./sellerEmail.service.js";
 export * from "./inventoryEmail.service.js";
 export * from "./orderEmail.service.js";
+export * from "./paymentEmail.service.js";
+export * from "./cancellationEmail.service.js";
 export * from "./flutterwave.service.js";
 export * from "./order.service.js";
 export * from "./payment.service.js";

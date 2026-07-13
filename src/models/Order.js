@@ -58,6 +58,7 @@ const orderSchema = new mongoose.Schema(
       currency: String,
       paidAt: Date,
       verifiedAt: Date,
+      paymentReminderSentAt: Date,
       lastVerificationSource: {
         type: String,
         enum: ["redirect", "webhook", "manual", "system"],

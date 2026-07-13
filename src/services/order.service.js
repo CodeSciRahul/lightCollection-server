@@ -6,6 +6,7 @@ import { restoreOrderStock } from "../utils/helpers/paymentHelpers.js";
 import { restoreCouponOnCancel } from "../utils/helpers/couponHelpers.js";
 import { createError } from "../utils/AppError.js";
 import * as OrderEmail from "./orderEmail.service.js";
+import * as CancellationEmail from "./cancellationEmail.service.js";
 
 export const placeOrder = async (userId, { addressId, paymentMethod = "cod" }) => {
   if (paymentMethod !== "cod") {
@@ -70,6 +71,7 @@ export const cancelOrder = async (userId, orderId, { reason }) => {
   if (!order) throw createError("Order not found", 404);
 
   if (order.paymentMethod === "card" && order.paymentStatus === "paid") {
+    await CancellationEmail.notifyPaidCancelBlocked(order);
     throw createError(
       "Paid online orders cannot be cancelled online. Please contact support.",
       400
@@ -97,8 +99,7 @@ export const cancelOrder = async (userId, orderId, { reason }) => {
   await restoreCouponOnCancel(order);
   await order.save();
 
-  await OrderEmail.notifyOrderCancelled(order, {
-    cancelledBy: "customer",
+  await CancellationEmail.notifyCustomerCancellation(order, {
     reason: order.cancelReason,
   });
 
@@ -257,15 +258,18 @@ export const updateAdminOrderStatus = async (orderId, { status, note }) => {
   if (status === "delivered") order.deliveredAt = new Date();
   if (status === "cancelled") {
     order.cancelledAt = new Date();
+    order.cancelReason = note || order.cancelReason || "Cancelled by admin";
+    await restoreOrderStock(order);
     await restoreCouponOnCancel(order);
   }
 
   await order.save();
 
   if (status === "cancelled") {
-    await OrderEmail.notifyOrderCancelled(order, {
+    await CancellationEmail.notifyOpsCancellation(order, {
       cancelledBy: "admin",
-      reason: note || order.cancelReason || "Cancelled by admin",
+      reason: order.cancelReason,
+      stockRestored: true,
     });
   } else {
     await OrderEmail.notifyOrderStatusChanged(order, {

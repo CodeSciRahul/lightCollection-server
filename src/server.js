@@ -1,6 +1,7 @@
 import process from "process";
 import { createApp } from "./app.js";
 import { appConfig, connectDB } from "./config/index.js";
+import { startCronJobs, stopCronJobs } from "./cron/index.js";
 
 const app = createApp();
 
@@ -10,8 +11,11 @@ const start = async () => {
     console.log(`Server running on http://localhost:${appConfig.port}`);
   });
 
+  startCronJobs();
+
   const shutdown = (signal) => {
     console.log(`${signal} received. Shutting down gracefully...`);
+    stopCronJobs();
     server.close(() => {
       process.exit(0);
     });

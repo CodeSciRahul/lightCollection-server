@@ -9,9 +9,13 @@ import {
   renderSellerEmail,
   renderInventoryEmail,
   renderOrderEmail,
+  renderPaymentEmail,
+  renderCancellationEmail,
   SELLER_EVENT_META,
   INVENTORY_EVENT_META,
   ORDER_EVENT_META,
+  PAYMENT_EVENT_META,
+  CANCELLATION_EVENT_META,
 } from "../src/emails/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -119,6 +123,41 @@ const sample = {
   cancelledBy: "customer",
   note: "Handed to courier",
   status: "shipped",
+  amount: 12079,
+  channel: "card",
+  txRef: "ORD-abc123",
+  transactionId: "999888777",
+  paidAt: new Date(),
+  failedAt: new Date(),
+  orderCancelled: true,
+  retryUrl: "http://localhost:3000/checkout/payment/retry?orderId=665f1a2b3c4d5e6f7a8b9c0d",
+  checkoutUrl: "https://checkout.flutterwave.com/v3/hosted/pay/test",
+  reminderMinutes: 30,
+  expectedAmount: 12079,
+  receivedAmount: 10000,
+  mismatchType: "amount",
+  source: "webhook",
+  details: "Expected 12079 NGN but gateway reported 10000.",
+  previousAmount: 12079,
+  newAmount: 11000,
+  period: "1–15 Jul 2026",
+  payoutAmount: 85000,
+  payoutDate: new Date(),
+  bankLast4: "4242",
+  statementUrl: "http://localhost:5173/seller/finance/statements/july",
+  failureReason: "Invalid account number",
+  bankUrl: "http://localhost:5173/seller/profile",
+  grossSales: 100000,
+  commissionAmount: 12000,
+  netPayout: 88000,
+  refundEligible: false,
+  stockRestored: true,
+  audience: "customer",
+  recipientName: "Sam Okello",
+  attemptNumber: 1,
+  failureReason: "Customer refused delivery / not available",
+  attemptedAt: new Date(),
+  rescheduleUrl: "http://localhost:3000/orders/665f1a2b3c4d5e6f7a8b9c0d/reschedule",
 };
 
 const writeGroup = async (dirName, meta, renderFn) => {
@@ -148,5 +187,7 @@ const writeGroup = async (dirName, meta, renderFn) => {
 await writeGroup("seller", SELLER_EVENT_META, renderSellerEmail);
 await writeGroup("inventory", INVENTORY_EVENT_META, renderInventoryEmail);
 await writeGroup("order", ORDER_EVENT_META, renderOrderEmail);
+await writeGroup("payment", PAYMENT_EVENT_META, renderPaymentEmail);
+await writeGroup("cancellation", CANCELLATION_EVENT_META, renderCancellationEmail);
 
 console.log(`\nPreviews under: ${outDir}`);

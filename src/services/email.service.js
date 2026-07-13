@@ -4,10 +4,14 @@ import {
   renderSellerEmail,
   renderInventoryEmail,
   renderOrderEmail,
+  renderPaymentEmail,
+  renderCancellationEmail,
   buildFromHeader,
   SELLER_EVENT_META,
   INVENTORY_EVENT_META,
   ORDER_EVENT_META,
+  PAYMENT_EVENT_META,
+  CANCELLATION_EVENT_META,
 } from "../emails/index.js";
 
 const SELLER_OTP_SUBJECT = "Your NileCart seller verification code";
@@ -265,6 +269,76 @@ export const sendOrderEmail = async (eventKey, { to, data } = {}) => {
     replyTo: rendered.replyTo,
     tags: [
       { name: "category", value: "orders" },
+      { name: "event", value: rendered.id },
+    ],
+  });
+};
+
+/**
+ * Send a rendered payment email (F1–F11).
+ */
+export const sendPaymentEmail = async (eventKey, { to, data } = {}) => {
+  if (!PAYMENT_EVENT_META[eventKey]) {
+    throw new Error(`Unknown payment email event: ${eventKey}`);
+  }
+
+  const rendered = renderPaymentEmail(eventKey, data || {});
+  let from = buildFromHeader(rendered.senderKey, {
+    emailDomain: appConfig.email?.domain,
+    fromOverrides: appConfig.email?.from,
+  });
+
+  if (!appConfig.email?.from?.[rendered.senderKey] && appConfig.resend.fromEmail) {
+    const fallback = appConfig.resend.fromEmail;
+    from = fallback.includes("<")
+      ? fallback
+      : from.replace(/<[^>]+>/, `<${fallback}>`);
+  }
+
+  return sendEmail({
+    to,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    from,
+    replyTo: rendered.replyTo,
+    tags: [
+      { name: "category", value: "payments" },
+      { name: "event", value: rendered.id },
+    ],
+  });
+};
+
+/**
+ * Send a rendered cancellation email (G1–G6).
+ */
+export const sendCancellationEmail = async (eventKey, { to, data } = {}) => {
+  if (!CANCELLATION_EVENT_META[eventKey]) {
+    throw new Error(`Unknown cancellation email event: ${eventKey}`);
+  }
+
+  const rendered = renderCancellationEmail(eventKey, data || {});
+  let from = buildFromHeader(rendered.senderKey, {
+    emailDomain: appConfig.email?.domain,
+    fromOverrides: appConfig.email?.from,
+  });
+
+  if (!appConfig.email?.from?.[rendered.senderKey] && appConfig.resend.fromEmail) {
+    const fallback = appConfig.resend.fromEmail;
+    from = fallback.includes("<")
+      ? fallback
+      : from.replace(/<[^>]+>/, `<${fallback}>`);
+  }
+
+  return sendEmail({
+    to,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    from,
+    replyTo: rendered.replyTo,
+    tags: [
+      { name: "category", value: "cancellations" },
       { name: "event", value: rendered.id },
     ],
   });

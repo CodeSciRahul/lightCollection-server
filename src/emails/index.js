@@ -1,10 +1,14 @@
 import { SELLER_TEMPLATES } from "./templates/seller/index.js";
 import { INVENTORY_TEMPLATES } from "./templates/inventory/index.js";
 import { ORDER_TEMPLATES } from "./templates/order/index.js";
+import { PAYMENT_TEMPLATES } from "./templates/payment/index.js";
+import { CANCELLATION_TEMPLATES } from "./templates/cancellation/index.js";
 import {
   SELLER_EVENT_META,
   INVENTORY_EVENT_META,
   ORDER_EVENT_META,
+  PAYMENT_EVENT_META,
+  CANCELLATION_EVENT_META,
   resolveFromAddress,
 } from "./senders.js";
 import { brand } from "./design/tokens.js";
@@ -50,6 +54,18 @@ export const renderOrderEmail = renderWithMeta(
   "order"
 );
 
+export const renderPaymentEmail = renderWithMeta(
+  PAYMENT_TEMPLATES,
+  PAYMENT_EVENT_META,
+  "payment"
+);
+
+export const renderCancellationEmail = renderWithMeta(
+  CANCELLATION_TEMPLATES,
+  CANCELLATION_EVENT_META,
+  "cancellation"
+);
+
 export const buildFromHeader = (senderKey, config = {}) => {
   const from = resolveFromAddress(senderKey, {
     domain: config.emailDomain || brand.domain,
@@ -63,6 +79,8 @@ export const buildFromHeader = (senderKey, config = {}) => {
 export * from "./templates/seller/index.js";
 export * from "./templates/inventory/index.js";
 export * from "./templates/order/index.js";
+export * from "./templates/payment/index.js";
+export * from "./templates/cancellation/index.js";
 export * from "./senders.js";
 export * from "./design/tokens.js";
 export * from "./components/index.js";

@@ -19,6 +19,7 @@ import {
 import { isFlutterwaveV3Configured } from "../vendor/flutterwave.vendor.js";
 import { createError } from "../utils/AppError.js";
 import * as OrderEmail from "./orderEmail.service.js";
+import * as PaymentEmail from "./paymentEmail.service.js";
 
 const buildRedirectUrl = () =>
   `${appConfig.storefrontUrl.replace(/\/$/, "")}/checkout/payment/callback`;
@@ -227,7 +228,14 @@ export const retryCheckout = async (userId, orderId) => {
       checkoutUrl: checkout.link,
       currency: appConfig.payment.currency,
     };
+    // Allow a fresh F5 reminder window for the new checkout session
+    if (order.flutterwave.paymentReminderSentAt) {
+      order.flutterwave.paymentReminderSentAt = undefined;
+    }
+    order.markModified("flutterwave");
     await order.save();
+
+    await PaymentEmail.notifyPaymentRetry(order);
 
     return {
       order: formatOrderForClient(order),

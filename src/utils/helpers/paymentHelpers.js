@@ -6,6 +6,7 @@ import { findVariant } from "./productHelpers.js";
 import { restoreCouponOnCancel } from "./couponHelpers.js";
 import { appConfig } from '../../config/index.js';
 import * as OrderEmail from "../../services/orderEmail.service.js";
+import * as PaymentEmail from "../../services/paymentEmail.service.js";
 
 const SUCCESS_STATUSES = new Set(["successful", "succeeded", "success"]);
 const FAILED_STATUSES = new Set(["failed", "cancelled", "canceled"]);
@@ -79,12 +80,28 @@ export const applyPaymentVerification = async (order, verification, source = "re
   const normalized = normalizeVerificationPayload(verification);
 
   if (!normalized.txRef || normalized.txRef !== order.flutterwave?.txRef) {
+    await PaymentEmail.notifyPaymentMismatch({
+      order,
+      txRef: normalized.txRef || order.flutterwave?.txRef,
+      mismatchType: "tx_ref",
+      source,
+      details: `Gateway tx_ref (${normalized.txRef || "missing"}) does not match order tx_ref (${order.flutterwave?.txRef || "missing"}).`,
+    });
     throw Object.assign(new Error("Payment reference does not match this order"), {
       statusCode: 400,
     });
   }
 
   if (!amountsMatch(order.total, normalized.amount, normalized.currency)) {
+    await PaymentEmail.notifyPaymentMismatch({
+      order,
+      txRef: normalized.txRef,
+      expectedAmount: order.total,
+      receivedAmount: normalized.amount,
+      mismatchType: "amount",
+      source,
+      details: `Expected ${order.total} ${normalized.currency || ""} but gateway reported ${normalized.amount}.`,
+    });
     throw Object.assign(
       new Error("Payment amount does not match order total. Contact support."),
       { statusCode: 400 }
@@ -111,11 +128,14 @@ export const applyPaymentVerification = async (order, verification, source = "re
     });
 
     await order.save();
+
+    await PaymentEmail.notifyPaymentSuccessful(order);
     await OrderEmail.notifyOrderStatusChanged(order, {
       status: "confirmed",
       note: `Payment confirmed via ${source}`,
       previousStatus: "placed",
     });
+
     return { order, alreadyPaid: false, paid: true };
   }
 
@@ -161,9 +181,11 @@ export const failPaymentAndCancelOrder = async (order, reason, source = "system"
   await order.save();
 
   if (!wasAlreadyCancelled) {
-    await OrderEmail.notifyOrderCancelled(order, {
-      cancelledBy: "payment",
+    // Payment-specific F3/F4 (receipt/fail + seller stop-ship) instead of generic G1/G2
+    await PaymentEmail.notifyPaymentFailed(order, {
       reason: reason || order.cancelReason,
+      orderCancelled: true,
+      allowRetry: false,
     });
   }
 

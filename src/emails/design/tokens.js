@@ -70,4 +70,5 @@ export const defaults = {
   supportEmail: `support@${brand.domain}`,
   sellerEmail: `seller@${brand.domain}`,
   legalEmail: `legal@${brand.domain}`,
+  returnsEmail: `returns@${brand.domain}`,
 };
