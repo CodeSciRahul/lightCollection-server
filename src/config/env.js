@@ -58,6 +58,8 @@ export const appConfig = {
       legal: trim(process.env.EMAIL_FROM_LEGAL),
       noreply: trim(process.env.EMAIL_FROM_NOREPLY),
       inventory: trim(process.env.EMAIL_FROM_INVENTORY),
+      orders: trim(process.env.EMAIL_FROM_ORDERS),
+      shipping: trim(process.env.EMAIL_FROM_SHIPPING),
     },
     /** Ops inbox(es) for B2 new-seller alerts (comma-separated) */
     adminNotifyEmails: (process.env.EMAIL_ADMIN_NOTIFY || "")

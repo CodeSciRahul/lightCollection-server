@@ -5,6 +5,7 @@ import * as PaymentWebhookEventRepository from "../../repositories/paymentWebhoo
 import { findVariant } from "./productHelpers.js";
 import { restoreCouponOnCancel } from "./couponHelpers.js";
 import { appConfig } from '../../config/index.js';
+import * as OrderEmail from "../../services/orderEmail.service.js";
 
 const SUCCESS_STATUSES = new Set(["successful", "succeeded", "success"]);
 const FAILED_STATUSES = new Set(["failed", "cancelled", "canceled"]);
@@ -110,6 +111,11 @@ export const applyPaymentVerification = async (order, verification, source = "re
     });
 
     await order.save();
+    await OrderEmail.notifyOrderStatusChanged(order, {
+      status: "confirmed",
+      note: `Payment confirmed via ${source}`,
+      previousStatus: "placed",
+    });
     return { order, alreadyPaid: false, paid: true };
   }
 
@@ -129,7 +135,9 @@ export const failPaymentAndCancelOrder = async (order, reason, source = "system"
     return order;
   }
 
-  if (order.orderStatus !== "cancelled") {
+  const wasAlreadyCancelled = order.orderStatus === "cancelled";
+
+  if (!wasAlreadyCancelled) {
     await restoreOrderStock(order);
     await restoreCouponOnCancel(order);
 
@@ -151,6 +159,14 @@ export const failPaymentAndCancelOrder = async (order, reason, source = "system"
   }
 
   await order.save();
+
+  if (!wasAlreadyCancelled) {
+    await OrderEmail.notifyOrderCancelled(order, {
+      cancelledBy: "payment",
+      reason: reason || order.cancelReason,
+    });
+  }
+
   return order;
 };
 

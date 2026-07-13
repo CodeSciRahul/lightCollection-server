@@ -8,8 +8,10 @@ import { fileURLToPath } from "node:url";
 import {
   renderSellerEmail,
   renderInventoryEmail,
+  renderOrderEmail,
   SELLER_EVENT_META,
   INVENTORY_EVENT_META,
+  ORDER_EVENT_META,
 } from "../src/emails/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -78,6 +80,45 @@ const sample = {
   inventoryUrl: "http://localhost:5173/seller/products",
   productEditUrl:
     "http://localhost:5173/seller/products/665f1a2b3c4d5e6f7a8b9c0d/edit",
+  customerName: "Sam Okello",
+  orderNumber: "NILECART-1001",
+  paymentMethod: "cod",
+  paymentStatus: "pending",
+  items: [
+    {
+      title: "Linen Midi Dress",
+      quantity: 1,
+      price: 12000,
+      size: "M",
+      color: "Sage",
+      variantSku: "LMD-M-SAGE",
+    },
+  ],
+  subtotal: 12000,
+  discount: 0,
+  shippingFee: 79,
+  total: 12079,
+  currency: "NGN",
+  shippingAddress: {
+    fullName: "Sam Okello",
+    addressLine: "12 Kampala Road",
+    city: "Kampala",
+    state: "Central",
+    pincode: "10001",
+    country: "Uganda",
+    mobileNumber: "+256700000000",
+  },
+  placedAt: new Date(),
+  updatedAt: new Date(),
+  cancelledAt: new Date(),
+  deliveredAt: new Date(),
+  orderUrl: "http://localhost:3000/orders/665f1a2b3c4d5e6f7a8b9c0d",
+  payUrl: "http://localhost:3000/checkout/payment",
+  sellerOrderUrl: "http://localhost:5173/seller/orders/665f1a2b3c4d5e6f7a8b9c0d",
+  cancelReason: "Changed my mind",
+  cancelledBy: "customer",
+  note: "Handed to courier",
+  status: "shipped",
 };
 
 const writeGroup = async (dirName, meta, renderFn) => {
@@ -106,5 +147,6 @@ const writeGroup = async (dirName, meta, renderFn) => {
 
 await writeGroup("seller", SELLER_EVENT_META, renderSellerEmail);
 await writeGroup("inventory", INVENTORY_EVENT_META, renderInventoryEmail);
+await writeGroup("order", ORDER_EVENT_META, renderOrderEmail);
 
 console.log(`\nPreviews under: ${outDir}`);

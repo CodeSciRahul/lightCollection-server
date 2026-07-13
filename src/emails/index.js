@@ -1,24 +1,21 @@
 import { SELLER_TEMPLATES } from "./templates/seller/index.js";
 import { INVENTORY_TEMPLATES } from "./templates/inventory/index.js";
+import { ORDER_TEMPLATES } from "./templates/order/index.js";
 import {
   SELLER_EVENT_META,
   INVENTORY_EVENT_META,
+  ORDER_EVENT_META,
   resolveFromAddress,
 } from "./senders.js";
 import { brand } from "./design/tokens.js";
 
-/**
- * Render a seller lifecycle email by event key.
- * @param {keyof typeof SELLER_TEMPLATES} eventKey
- * @param {object} data
- */
-export const renderSellerEmail = (eventKey, data = {}) => {
-  const build = SELLER_TEMPLATES[eventKey];
+const renderWithMeta = (templates, metaMap, label) => (eventKey, data = {}) => {
+  const build = templates[eventKey];
   if (!build) {
-    throw new Error(`Unknown seller email template: ${eventKey}`);
+    throw new Error(`Unknown ${label} email template: ${eventKey}`);
   }
 
-  const meta = SELLER_EVENT_META[eventKey];
+  const meta = metaMap[eventKey];
   const { html, text } = build(data);
   const subject =
     typeof meta.subject === "function" ? meta.subject(data) : meta.subject;
@@ -35,33 +32,23 @@ export const renderSellerEmail = (eventKey, data = {}) => {
   };
 };
 
-/**
- * Render an inventory alert email by event key (C4–C5).
- * @param {keyof typeof INVENTORY_TEMPLATES} eventKey
- * @param {object} data
- */
-export const renderInventoryEmail = (eventKey, data = {}) => {
-  const build = INVENTORY_TEMPLATES[eventKey];
-  if (!build) {
-    throw new Error(`Unknown inventory email template: ${eventKey}`);
-  }
+export const renderSellerEmail = renderWithMeta(
+  SELLER_TEMPLATES,
+  SELLER_EVENT_META,
+  "seller"
+);
 
-  const meta = INVENTORY_EVENT_META[eventKey];
-  const { html, text } = build(data);
-  const subject =
-    typeof meta.subject === "function" ? meta.subject(data) : meta.subject;
+export const renderInventoryEmail = renderWithMeta(
+  INVENTORY_TEMPLATES,
+  INVENTORY_EVENT_META,
+  "inventory"
+);
 
-  return {
-    eventKey,
-    id: meta.id,
-    priority: meta.priority,
-    senderKey: meta.sender,
-    subject,
-    html,
-    text,
-    replyTo: meta.replyTo,
-  };
-};
+export const renderOrderEmail = renderWithMeta(
+  ORDER_TEMPLATES,
+  ORDER_EVENT_META,
+  "order"
+);
 
 export const buildFromHeader = (senderKey, config = {}) => {
   const from = resolveFromAddress(senderKey, {
@@ -75,6 +62,7 @@ export const buildFromHeader = (senderKey, config = {}) => {
 
 export * from "./templates/seller/index.js";
 export * from "./templates/inventory/index.js";
+export * from "./templates/order/index.js";
 export * from "./senders.js";
 export * from "./design/tokens.js";
 export * from "./components/index.js";

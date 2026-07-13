@@ -18,6 +18,7 @@ import {
 } from "../services/flutterwave.service.js";
 import { isFlutterwaveV3Configured } from "../vendor/flutterwave.vendor.js";
 import { createError } from "../utils/AppError.js";
+import * as OrderEmail from "./orderEmail.service.js";
 
 const buildRedirectUrl = () =>
   `${appConfig.storefrontUrl.replace(/\/$/, "")}/checkout/payment/callback`;
@@ -95,6 +96,8 @@ export const initializeCheckout = async (userId, { addressId }) => {
       currency: appConfig.payment.currency,
     };
     await order.save();
+
+    await OrderEmail.notifyOrderPlaced(order);
 
     return {
       order: formatOrderForClient(order),

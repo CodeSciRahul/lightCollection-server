@@ -53,6 +53,18 @@ export const EMAIL_SENDERS = {
     displayName: `${brand.name} Inventory`,
     purpose: "Catalog and stock alerts",
   },
+  orders: {
+    key: "orders",
+    local: "orders",
+    displayName: `${brand.name} Orders`,
+    purpose: "Order confirmations and status updates",
+  },
+  shipping: {
+    key: "shipping",
+    local: "shipping",
+    displayName: `${brand.name} Shipping`,
+    purpose: "Shipment and delivery updates",
+  },
 };
 
 export const resolveFromAddress = (senderKey, { domain, overrides = {} } = {}) => {
@@ -151,5 +163,83 @@ export const INVENTORY_EVENT_META = {
         variantSku ? ` (${variantSku})` : ""
       }`,
     priority: "Important",
+  },
+};
+
+export const ORDER_EVENT_META = {
+  ORDER_PLACED_CUSTOMER: {
+    id: "E1",
+    sender: "orders",
+    subject: ({ orderNumber, paymentMethod, paymentStatus } = {}) => {
+      const needsPay =
+        paymentMethod === "card" && paymentStatus !== "paid";
+      return needsPay
+        ? `Complete payment for order ${orderNumber || ""}`.trim()
+        : `Order confirmed: ${orderNumber || ""}`.trim();
+    },
+    priority: "Critical",
+  },
+  ORDER_PLACED_SELLER: {
+    id: "E2",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `New order ${orderNumber || ""} — action required`.trim(),
+    priority: "Critical",
+  },
+  ORDER_CONFIRMED_CUSTOMER: {
+    id: "E5",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `We’re preparing order ${orderNumber || ""}`.trim(),
+    priority: "Critical",
+  },
+  ORDER_PACKED_CUSTOMER: {
+    id: "E6",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} is packed`.trim(),
+    priority: "Important",
+  },
+  ORDER_SHIPPED_CUSTOMER: {
+    id: "E8",
+    sender: "shipping",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} has shipped`.trim(),
+    priority: "Critical",
+  },
+  ORDER_OUT_FOR_DELIVERY_CUSTOMER: {
+    id: "E9",
+    sender: "shipping",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} is out for delivery`.trim(),
+    priority: "Critical",
+  },
+  ORDER_DELIVERED_CUSTOMER: {
+    id: "E10",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Delivered: order ${orderNumber || ""}`.trim(),
+    priority: "Critical",
+  },
+  ORDER_DELIVERED_SELLER: {
+    id: "E11",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} delivered`.trim(),
+    priority: "Important",
+  },
+  ORDER_CANCELLED_CUSTOMER: {
+    id: "G1",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} cancelled`.trim(),
+    priority: "Critical",
+  },
+  ORDER_CANCELLED_SELLER: {
+    id: "G2",
+    sender: "orders",
+    subject: ({ orderNumber } = {}) =>
+      `Order ${orderNumber || ""} was cancelled`.trim(),
+    priority: "Critical",
   },
 };

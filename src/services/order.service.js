@@ -5,6 +5,7 @@ import { buildOrderFromCart } from "../utils/helpers/orderBuilder.js";
 import { restoreOrderStock } from "../utils/helpers/paymentHelpers.js";
 import { restoreCouponOnCancel } from "../utils/helpers/couponHelpers.js";
 import { createError } from "../utils/AppError.js";
+import * as OrderEmail from "./orderEmail.service.js";
 
 export const placeOrder = async (userId, { addressId, paymentMethod = "cod" }) => {
   if (paymentMethod !== "cod") {
@@ -23,6 +24,8 @@ export const placeOrder = async (userId, { addressId, paymentMethod = "cod" }) =
   } catch (err) {
     throw createError(err.message, err.statusCode || 500);
   }
+
+  await OrderEmail.notifyOrderPlaced(order);
 
   return { order, __status: 201 };
 };
@@ -93,6 +96,12 @@ export const cancelOrder = async (userId, orderId, { reason }) => {
 
   await restoreCouponOnCancel(order);
   await order.save();
+
+  await OrderEmail.notifyOrderCancelled(order, {
+    cancelledBy: "customer",
+    reason: order.cancelReason,
+  });
+
   return { order };
 };
 
@@ -188,6 +197,7 @@ export const updateSellerOrderStatus = async (sellerId, orderId, { status, note 
     throw createError("Cannot fulfill an order with unpaid online payment", 400);
   }
 
+  const previousStatus = order.orderStatus;
   order.orderStatus = status;
   order.statusHistory.push({
     status,
@@ -199,6 +209,13 @@ export const updateSellerOrderStatus = async (sellerId, orderId, { status, note 
   }
 
   await order.save();
+
+  await OrderEmail.notifyOrderStatusChanged(order, {
+    status,
+    note,
+    previousStatus,
+  });
+
   return { order };
 };
 
@@ -230,6 +247,7 @@ export const updateAdminOrderStatus = async (orderId, { status, note }) => {
   const order = await OrderRepository.findById(orderId);
   if (!order) throw createError("Order not found", 404);
 
+  const previousStatus = order.orderStatus;
   order.orderStatus = status;
   order.statusHistory.push({
     status,
@@ -243,5 +261,19 @@ export const updateAdminOrderStatus = async (orderId, { status, note }) => {
   }
 
   await order.save();
+
+  if (status === "cancelled") {
+    await OrderEmail.notifyOrderCancelled(order, {
+      cancelledBy: "admin",
+      reason: note || order.cancelReason || "Cancelled by admin",
+    });
+  } else {
+    await OrderEmail.notifyOrderStatusChanged(order, {
+      status,
+      note,
+      previousStatus,
+    });
+  }
+
   return { order };
 };
