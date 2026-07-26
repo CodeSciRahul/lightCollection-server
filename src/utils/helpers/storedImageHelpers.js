@@ -195,3 +195,122 @@ export const formatBannerForDashboard = (banner) => {
     image: normalizeStoredImage(obj.image),
   };
 };
+
+export const formatCampaignForPublic = (campaign) => {
+  if (!campaign) return null;
+  const obj = campaign?.toObject ? campaign.toObject() : { ...campaign };
+
+  return {
+    ...obj,
+    image: getImageUrl(obj.image),
+    mobileImage: getImageUrl(obj.mobileImage),
+  };
+};
+
+export const formatCampaignForDashboard = (campaign) => {
+  if (!campaign) return null;
+  const obj = campaign?.toObject ? campaign.toObject() : { ...campaign };
+
+  return {
+    ...obj,
+    image: normalizeStoredImage(obj.image),
+    mobileImage: normalizeStoredImage(obj.mobileImage),
+  };
+};
+
+export const formatCollectionForPublic = (collection) => {
+  if (!collection) return null;
+  const obj = collection?.toObject ? collection.toObject() : { ...collection };
+
+  return {
+    ...obj,
+    image: getImageUrl(obj.image),
+  };
+};
+
+export const formatCollectionForDashboard = (collection) => {
+  if (!collection) return null;
+  const obj = collection?.toObject ? collection.toObject() : { ...collection };
+
+  return {
+    ...obj,
+    image: normalizeStoredImage(obj.image),
+  };
+};
+
+export const formatFlashSaleForPublic = (flashSale) => {
+  if (!flashSale) return null;
+  const obj = flashSale?.toObject ? flashSale.toObject() : { ...flashSale };
+
+  return {
+    ...obj,
+    image: getImageUrl(obj.image),
+  };
+};
+
+export const formatFlashSaleForDashboard = (flashSale) => {
+  if (!flashSale) return null;
+  const obj = flashSale?.toObject ? flashSale.toObject() : { ...flashSale };
+
+  return {
+    ...obj,
+    image: normalizeStoredImage(obj.image),
+  };
+};
+
+export const formatBrandForPublic = (brand) => {
+  if (!brand) return null;
+  const obj = brand?.toObject ? brand.toObject() : { ...brand };
+
+  return {
+    ...obj,
+    logo: getImageUrl(obj.logo),
+  };
+};
+
+export const formatBrandForDashboard = (brand) => {
+  if (!brand) return null;
+  const obj = brand?.toObject ? brand.toObject() : { ...brand };
+
+  return {
+    ...obj,
+    logo: normalizeStoredImage(obj.logo),
+  };
+};
+
+export const formatHomeSectionForDashboard = (section) => {
+  if (!section) return null;
+  const obj = section?.toObject ? section.toObject() : { ...section };
+
+  return {
+    ...obj,
+    image: normalizeStoredImage(obj.image),
+  };
+};
+
+export const formatHomeSectionForPublic = (section) => {
+  if (!section) return null;
+  const obj = section?.toObject ? section.toObject() : { ...section };
+
+  return {
+    _id: obj._id,
+    key: obj.key,
+    type: obj.type,
+    title: obj.title,
+    subtitle: obj.subtitle,
+    displayOrder: obj.displayOrder,
+    backgroundColor: obj.backgroundColor,
+    textColor: obj.textColor,
+    ctaText: obj.ctaText,
+    ctaLink: obj.ctaLink,
+    image: getImageUrl(obj.image),
+    config: {
+      layout: obj.config?.layout || "grid",
+      limit: obj.config?.limit || 8,
+      productSource: obj.config?.productSource,
+      source: obj.config?.source,
+      popupFrequency: obj.config?.popupFrequency,
+      deepLink: obj.config?.deepLink,
+    },
+  };
+};

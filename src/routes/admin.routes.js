@@ -41,6 +41,42 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
 } from "../controllers/announcement.controller.js";
+import {
+  listHomeSectionsAdmin,
+  createHomeSection,
+  updateHomeSection,
+  reorderHomeSections,
+  toggleHomeSectionStatus,
+  deleteHomeSection,
+} from "../controllers/home.controller.js";
+import {
+  listCampaignsAdmin,
+  createCampaign,
+  updateCampaign,
+  toggleCampaignStatus,
+  deleteCampaign,
+} from "../controllers/campaign.controller.js";
+import {
+  listCollectionsAdmin,
+  createCollection,
+  updateCollection,
+  toggleCollectionStatus,
+  deleteCollection,
+} from "../controllers/collection.controller.js";
+import {
+  listFlashSalesAdmin,
+  createFlashSale,
+  updateFlashSale,
+  toggleFlashSaleStatus,
+  deleteFlashSale,
+} from "../controllers/flashSale.controller.js";
+import {
+  listBrandsAdmin,
+  createBrand,
+  updateBrand,
+  toggleBrandStatus,
+  deleteBrand,
+} from "../controllers/brand.controller.js";
 import { protect, authorize } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -85,5 +121,36 @@ router.get("/announcements", listAnnouncementsAdmin);
 router.post("/announcements", createAnnouncement);
 router.put("/announcements/:id", updateAnnouncement);
 router.delete("/announcements/:id", deleteAnnouncement);
+
+router.get("/home-sections", listHomeSectionsAdmin);
+router.post("/home-sections", createHomeSection);
+router.put("/home-sections/reorder", reorderHomeSections);
+router.put("/home-sections/:id", updateHomeSection);
+router.patch("/home-sections/:id/status", toggleHomeSectionStatus);
+router.delete("/home-sections/:id", deleteHomeSection);
+
+router.get("/campaigns", listCampaignsAdmin);
+router.post("/campaigns", createCampaign);
+router.put("/campaigns/:id", updateCampaign);
+router.patch("/campaigns/:id/status", toggleCampaignStatus);
+router.delete("/campaigns/:id", deleteCampaign);
+
+router.get("/collections", listCollectionsAdmin);
+router.post("/collections", createCollection);
+router.put("/collections/:id", updateCollection);
+router.patch("/collections/:id/status", toggleCollectionStatus);
+router.delete("/collections/:id", deleteCollection);
+
+router.get("/flash-sales", listFlashSalesAdmin);
+router.post("/flash-sales", createFlashSale);
+router.put("/flash-sales/:id", updateFlashSale);
+router.patch("/flash-sales/:id/status", toggleFlashSaleStatus);
+router.delete("/flash-sales/:id", deleteFlashSale);
+
+router.get("/brands", listBrandsAdmin);
+router.post("/brands", createBrand);
+router.put("/brands/:id", updateBrand);
+router.patch("/brands/:id/status", toggleBrandStatus);
+router.delete("/brands/:id", deleteBrand);
 
 export default router;

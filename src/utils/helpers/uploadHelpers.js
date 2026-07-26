@@ -19,6 +19,7 @@ export const UPLOAD_FOLDERS = {
   PROFILES: "profiles",
   PLATFORM_BANNERS: "platform-banners",
   CATEGORIES: "categories",
+  MARKETING: "marketing",
   SELLER_DOCUMENTS: "seller-documents",
 };
 
@@ -113,6 +114,8 @@ export const buildObjectKey = ({ folder, extension, userId, sellerId, documentTy
       return `banners/${fileName}`;
     case UPLOAD_FOLDERS.CATEGORIES:
       return `categories/${fileName}`;
+    case UPLOAD_FOLDERS.MARKETING:
+      return `marketing/${fileName}`;
     case UPLOAD_FOLDERS.SELLER_DOCUMENTS:
       return `stores/documents/${sellerId}/${documentType}/${fileName}`;
     default:

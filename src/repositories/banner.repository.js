@@ -11,6 +11,7 @@ export const findByIdAndDelete = (id) => Banner.findByIdAndDelete(id);
 export const create = (data) => Banner.create(data);
 
 export const findActive = () =>
-  Banner.find({ isActive: true }).sort({ order: 1, createdAt: -1 });
+  Banner.find({ isActive: true }).sort({ displayOrder: 1, createdAt: -1 });
 
-export const findAllSorted = () => Banner.find().sort({ order: 1, createdAt: -1 });
+export const findAllSorted = () =>
+  Banner.find().sort({ displayOrder: 1, createdAt: -1 });

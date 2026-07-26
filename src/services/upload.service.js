@@ -41,9 +41,9 @@ const resolveUploadContext = ({ folder, user, seller }) => {
     throw err;
   }
 
-  if (folder === UPLOAD_FOLDERS.PLATFORM_BANNERS) {
+  if (folder === UPLOAD_FOLDERS.PLATFORM_BANNERS || folder === UPLOAD_FOLDERS.MARKETING) {
     if (user.role !== "admin") {
-      const err = new Error("Only admins can upload platform banners.");
+      const err = new Error("Only admins can upload marketing assets.");
       err.statusCode = 403;
       throw err;
     }
