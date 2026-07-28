@@ -11,6 +11,7 @@ import { publicActiveFilter } from "../utils/helpers/scheduleHelpers.js";
 import { formatProductCard } from "../utils/helpers/productHelpers.js";
 import {
   formatBannerForPublic,
+  formatAnnouncementForPublic,
   formatCampaignForPublic,
   formatCollectionForPublic,
   formatFlashSaleForPublic,
@@ -20,6 +21,7 @@ import {
   formatHomeSectionForDashboard,
   normalizeStoredImage,
 } from "../utils/helpers/storedImageHelpers.js";
+import { filterByTargeting } from "../utils/helpers/targetingHelpers.js";
 import {
   DEFAULT_HOME_SECTIONS,
   HOME_SECTION_TYPES,
@@ -66,14 +68,17 @@ const resolveProducts = async ({ productSource, productIds, limit = 8 }) => {
   return products.map(formatProductCard);
 };
 
-const resolveBanners = async (config = {}) => {
+const resolveBanners = async (config = {}, audience = {}) => {
   const filter = publicActiveFilter();
   if (config.source === "selected" && config.bannerIds?.length) {
     filter._id = { $in: config.bannerIds };
   }
 
-  const banners = await BannerRepository.find(filter).sort({ displayOrder: 1 });
-  let list = banners.map(formatBannerForPublic);
+  const banners = await BannerRepository.find(filter).sort({
+    displayOrder: 1,
+    priority: -1,
+  });
+  let list = filterByTargeting(banners, audience).map(formatBannerForPublic);
 
   if (config.source === "selected" && config.bannerIds?.length) {
     const byId = new Map(list.map((b) => [String(b._id), b]));
@@ -216,12 +221,12 @@ const resolveCollection = async (section) => {
   return { ...formatted, products };
 };
 
-const resolveSectionData = async (section) => {
+const resolveSectionData = async (section, audience = {}) => {
   const config = toPlain(section.config) || {};
 
   switch (section.type) {
     case "hero_banner":
-      return { banners: await resolveBanners(config) };
+      return { banners: await resolveBanners(config, audience) };
 
     case "announcement_bar": {
       const filter = publicActiveFilter();
@@ -231,7 +236,11 @@ const resolveSectionData = async (section) => {
       const announcements = await AnnouncementRepository.find(filter).sort({
         priority: -1,
       });
-      return { announcements };
+      return {
+        announcements: filterByTargeting(announcements, audience).map(
+          formatAnnouncementForPublic
+        ),
+      };
     }
 
     case "promotional_campaign":
@@ -298,7 +307,7 @@ const isSectionRenderable = (section, data) => {
   }
 };
 
-export const getHomePage = async () => {
+export const getHomePage = async (audience = {}) => {
   await ensureDefaultSections();
 
   const [announcements, sections] = await Promise.all([
@@ -312,19 +321,14 @@ export const getHomePage = async () => {
     }),
   ]);
 
-  const announcement = announcements[0]
-    ? {
-        _id: announcements[0]._id,
-        message: announcements[0].message,
-        backgroundColor: announcements[0].backgroundColor || "#111111",
-        textColor: announcements[0].textColor || "#ffffff",
-        priority: announcements[0].priority,
-      }
+  const matchedAnnouncements = filterByTargeting(announcements, audience);
+  const announcement = matchedAnnouncements[0]
+    ? formatAnnouncementForPublic(matchedAnnouncements[0])
     : null;
 
   const resolved = await Promise.all(
     sections.map(async (section) => {
-      const data = await resolveSectionData(section);
+      const data = await resolveSectionData(section, audience);
       return { section, data };
     })
   );

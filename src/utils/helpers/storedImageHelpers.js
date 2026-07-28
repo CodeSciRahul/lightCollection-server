@@ -3,6 +3,8 @@
  * Accepts legacy plain URL strings for backward compatibility.
  */
 
+import { resolveDeepLink } from "./deepLinkHelpers.js";
+
 export const getImageUrl = (image) => {
   if (!image) return null;
   if (typeof image === "string") return image;
@@ -180,10 +182,24 @@ export const formatCategoryForDashboard = (category) => {
 
 export const formatBannerForPublic = (banner) => {
   const obj = banner?.toObject ? banner.toObject() : { ...banner };
+  const ctaHref = resolveDeepLink(obj.deepLink, obj.ctaLink);
 
   return {
-    ...obj,
+    _id: obj._id,
+    title: obj.title,
+    subtitle: obj.subtitle,
+    description: obj.description,
+    type: obj.type || "hero",
     image: getImageUrl(obj.image),
+    mobileImage: getImageUrl(obj.mobileImage) || getImageUrl(obj.image),
+    ctaText: obj.ctaText || "Shop Now",
+    ctaLink: obj.ctaLink || null,
+    ctaHref,
+    deepLink: obj.deepLink || null,
+    displayOrder: obj.displayOrder ?? 0,
+    priority: obj.priority ?? 0,
+    startsAt: obj.startsAt,
+    endsAt: obj.endsAt,
   };
 };
 
@@ -192,7 +208,51 @@ export const formatBannerForDashboard = (banner) => {
 
   return {
     ...obj,
+    type: obj.type || "hero",
     image: normalizeStoredImage(obj.image),
+    mobileImage: normalizeStoredImage(obj.mobileImage),
+    deepLink: obj.deepLink || null,
+    targeting: obj.targeting || { devices: ["all"], auth: "all" },
+    ctaHref: resolveDeepLink(obj.deepLink, obj.ctaLink),
+  };
+};
+
+export const formatAnnouncementForPublic = (announcement) => {
+  if (!announcement) return null;
+  const obj = announcement?.toObject
+    ? announcement.toObject()
+    : { ...announcement };
+  const href = resolveDeepLink(obj.deepLink, obj.link);
+
+  return {
+    _id: obj._id,
+    message: obj.message,
+    type: obj.type || "top_bar",
+    backgroundColor: obj.backgroundColor || "#111111",
+    textColor: obj.textColor || "#ffffff",
+    priority: obj.priority ?? 0,
+    dismissible: obj.dismissible !== false,
+    link: obj.link || null,
+    href,
+    deepLink: obj.deepLink || null,
+    startsAt: obj.startsAt,
+    endsAt: obj.endsAt,
+  };
+};
+
+export const formatAnnouncementForDashboard = (announcement) => {
+  if (!announcement) return null;
+  const obj = announcement?.toObject
+    ? announcement.toObject()
+    : { ...announcement };
+
+  return {
+    ...obj,
+    type: obj.type || "top_bar",
+    deepLink: obj.deepLink || null,
+    targeting: obj.targeting || { devices: ["all"], auth: "all" },
+    dismissible: obj.dismissible !== false,
+    href: resolveDeepLink(obj.deepLink, obj.link),
   };
 };
 

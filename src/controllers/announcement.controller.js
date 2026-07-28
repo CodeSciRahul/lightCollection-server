@@ -1,10 +1,26 @@
 import { serviceHandler } from "../utils/helpers/controllerHelpers.js";
 import * as AnnouncementService from "../services/announcement.service.js";
+import { buildAudienceContext } from "../utils/helpers/targetingHelpers.js";
+import { MARKETING_CACHE_CONTROL } from "../constants/marketing.js";
 
-export const getAnnouncements = serviceHandler(() => AnnouncementService.getAnnouncements());
+const withMarketingCache = (handler) =>
+  serviceHandler(async (req) => {
+    const result = await handler(req);
+    return {
+      ...result,
+      __setHeaders: { "Cache-Control": MARKETING_CACHE_CONTROL },
+    };
+  });
 
-export const getAnnouncementById = serviceHandler((req) =>
-  AnnouncementService.getAnnouncementById(req.params.id)
+export const getAnnouncements = withMarketingCache((req) =>
+  AnnouncementService.getAnnouncements(buildAudienceContext(req))
+);
+
+export const getAnnouncementById = withMarketingCache((req) =>
+  AnnouncementService.getAnnouncementById(
+    req.params.id,
+    buildAudienceContext(req)
+  )
 );
 
 export const listAnnouncementsAdmin = serviceHandler(() =>
@@ -18,6 +34,10 @@ export const createAnnouncement = serviceHandler(
 
 export const updateAnnouncement = serviceHandler((req) =>
   AnnouncementService.updateAnnouncement(req.params.id, req.body)
+);
+
+export const toggleAnnouncementStatus = serviceHandler((req) =>
+  AnnouncementService.toggleAnnouncementStatus(req.params.id, req.body)
 );
 
 export const deleteAnnouncement = serviceHandler((req) =>

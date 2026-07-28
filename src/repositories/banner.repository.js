@@ -15,3 +15,5 @@ export const findActive = () =>
 
 export const findAllSorted = () =>
   Banner.find().sort({ displayOrder: 1, createdAt: -1 });
+
+export const bulkWrite = (ops) => Banner.bulkWrite(ops);

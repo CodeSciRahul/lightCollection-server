@@ -1,7 +1,15 @@
 import { serviceHandler } from "../utils/helpers/controllerHelpers.js";
 import * as HomeService from "../services/home.service.js";
+import { buildAudienceContext } from "../utils/helpers/targetingHelpers.js";
+import { MARKETING_CACHE_CONTROL } from "../constants/marketing.js";
 
-export const getHomePage = serviceHandler(() => HomeService.getHomePage());
+export const getHomePage = serviceHandler(async (req) => {
+  const result = await HomeService.getHomePage(buildAudienceContext(req));
+  return {
+    ...result,
+    __setHeaders: { "Cache-Control": MARKETING_CACHE_CONTROL },
+  };
+});
 
 export const listHomeSectionsAdmin = serviceHandler(() =>
   HomeService.listHomeSectionsAdmin()

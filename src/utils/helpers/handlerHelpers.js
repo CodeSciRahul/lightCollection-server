@@ -87,9 +87,16 @@ export const serviceHandler = (serviceFn, defaultStatus = 200) =>
         throw createError("Internal server error: empty service response", 500);
       }
 
+      if (result.__setHeaders && typeof result.__setHeaders === "object") {
+        Object.entries(result.__setHeaders).forEach(([key, value]) => {
+          res.set(key, value);
+        });
+      }
+
       const status = result.__status ?? defaultStatus;
       const payload = { ...result };
       delete payload.__status;
+      delete payload.__setHeaders;
 
       sendSuccess(res, payload, status);
     } catch (err) {

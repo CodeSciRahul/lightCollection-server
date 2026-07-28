@@ -27,6 +27,7 @@ import {
   createBanner,
   updateBanner,
   toggleBannerStatus,
+  reorderBanners,
   deleteBanner,
 } from "../controllers/banner.controller.js";
 import {
@@ -39,6 +40,7 @@ import {
   listAnnouncementsAdmin,
   createAnnouncement,
   updateAnnouncement,
+  toggleAnnouncementStatus,
   deleteAnnouncement,
 } from "../controllers/announcement.controller.js";
 import {
@@ -105,6 +107,7 @@ router.patch("/coupons/:id/status", toggleCouponStatus);
 
 router.get("/banners", listBannersAdmin);
 router.post("/banners", createBanner);
+router.put("/banners/reorder", reorderBanners);
 router.put("/banners/:id", updateBanner);
 router.patch("/banners/:id/status", toggleBannerStatus);
 router.delete("/banners/:id", deleteBanner);
@@ -120,6 +123,7 @@ router.delete("/categories/:id", deleteCategory);
 router.get("/announcements", listAnnouncementsAdmin);
 router.post("/announcements", createAnnouncement);
 router.put("/announcements/:id", updateAnnouncement);
+router.patch("/announcements/:id/status", toggleAnnouncementStatus);
 router.delete("/announcements/:id", deleteAnnouncement);
 
 router.get("/home-sections", listHomeSectionsAdmin);
