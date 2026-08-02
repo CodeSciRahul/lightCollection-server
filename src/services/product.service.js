@@ -102,7 +102,10 @@ export const getProductBySlug = async (slug) => {
     isActive: true,
   })
     .populate("category", "name slug")
-    .populate("seller", "storeName storeSlug logo rating");
+    .populate(
+      "seller",
+      "storeName storeSlug logo banner description rating approvalStatus address.city address.state"
+    );
 
   if (!product) throw createError("Product not found", 404);
   return { product: formatProductForPublic(product) };
